@@ -1,0 +1,2129 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Attention From Scratch</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=DM+Mono:wght@400;500&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&display=swap">
+<style>
+/* ============ TOKENS ============ */
+:root{
+  --paper:#f7f4ee;
+  --paper-2:#f1ece2;
+  --card:#fffdf8;
+  --ink:#2a2724;
+  --ink-2:#5c554c;
+  --muted:#8b8378;
+  --line:#e2dace;
+  --line-soft:#efe9de;
+  --gold:#c9a96e;
+  --gold-soft:#f0e5cd;
+  --gold-deep:#8a6a2f;
+  --p-sage:#e7ece3;
+  --p-blue:#e3ebf1;
+  --p-blush:#f6e9e4;
+  --p-lilac:#eae6f0;
+  --p-cream:#f8f0dd;
+  --s1:#2f6fb0;
+  --s2:#c0492b;
+  --s3:#8a5aa8;
+  --s4:#5c8f28;
+  --ok:#3f7d3a;
+  --ok-bg:#e7f1e3;
+  --bad:#b23b2c;
+  --bad-bg:#f8e6e2;
+  --warn:#a06b1c;
+  --warn-bg:#f9efdb;
+  --shadow:0 1px 2px rgba(64,52,32,.05), 0 8px 24px -12px rgba(64,52,32,.18);
+  --radius:14px;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#1b1916;
+    --paper-2:#211e1a;
+    --card:#24211d;
+    --ink:#f1ece2;
+    --ink-2:#c3bcb0;
+    --muted:#918a7e;
+    --line:#3a352e;
+    --line-soft:#2f2b26;
+    --gold:#c9a96e;
+    --gold-soft:#3b3323;
+    --gold-deep:#dcc08b;
+    --p-sage:#252b25;
+    --p-blue:#212932;
+    --p-blush:#332723;
+    --p-lilac:#292532;
+    --p-cream:#332c1e;
+    --s1:#5794d2;
+    --s2:#d67144;
+    --s3:#a97ac6;
+    --s4:#6ea23c;
+    --ok:#7dc074;
+    --ok-bg:#1f2b1d;
+    --bad:#e08a78;
+    --bad-bg:#2f1f1b;
+    --warn:#d9ab5d;
+    --warn-bg:#2e2617;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.6);
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#1b1916; --paper-2:#211e1a; --card:#24211d;
+  --ink:#f1ece2; --ink-2:#c3bcb0; --muted:#918a7e;
+  --line:#3a352e; --line-soft:#2f2b26;
+  --gold:#c9a96e; --gold-soft:#3b3323; --gold-deep:#dcc08b;
+  --p-sage:#252b25; --p-blue:#212932; --p-blush:#332723; --p-lilac:#292532; --p-cream:#332c1e;
+  --s1:#5794d2; --s2:#d67144; --s3:#a97ac6; --s4:#6ea23c;
+  --ok:#7dc074; --ok-bg:#1f2b1d; --bad:#e08a78; --bad-bg:#2f1f1b; --warn:#d9ab5d; --warn-bg:#2e2617;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.6);
+}
+
+*{box-sizing:border-box}
+html{scroll-behavior:smooth; scroll-padding-top:96px}
+body{
+  margin:0; background:var(--paper); color:var(--ink);
+  font-family:"DM Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size:16px; line-height:1.62;
+  -webkit-font-smoothing:antialiased;
+}
+h1,h2,h3,h4{font-family:"Cormorant Garamond", Georgia, "Times New Roman", serif; text-wrap:balance; margin:0; font-weight:600; letter-spacing:.005em}
+.mono{font-family:"DM Mono", ui-monospace, "SF Mono", Menlo, monospace; font-variant-numeric:tabular-nums}
+.eyebrow{font-size:11.5px; letter-spacing:.15em; text-transform:uppercase; font-weight:700; color:var(--gold-deep); font-family:"DM Sans",sans-serif}
+a{color:inherit}
+:focus-visible{outline:2.5px solid var(--gold-deep); outline-offset:3px; border-radius:4px}
+@media (prefers-reduced-motion: reduce){*{animation:none !important; transition:none !important} html{scroll-behavior:auto}}
+
+.wrap{max-width:1240px; margin:0 auto; padding:0 24px}
+
+/* ============ MASTHEAD ============ */
+.masthead{
+  background:
+    radial-gradient(1100px 340px at 8% -30%, var(--gold-soft), transparent 62%),
+    linear-gradient(180deg, var(--paper-2), var(--paper));
+  border-bottom:1px solid var(--line);
+  padding:44px 0 34px;
+}
+.mh-grid{display:flex; gap:28px; align-items:flex-end; flex-wrap:wrap; justify-content:space-between}
+.mh-title{font-size:clamp(40px,5.6vw,66px); line-height:1.02; margin:8px 0 6px; font-weight:600}
+.mh-title em{font-style:italic; color:var(--gold-deep)}
+.mh-sub{color:var(--ink-2); font-size:16px; max-width:62ch; margin:0}
+.mh-meta{display:flex; gap:10px; flex-wrap:wrap; margin-top:16px}
+.chip{
+  font-size:12px; letter-spacing:.03em; padding:5px 11px; border-radius:999px;
+  background:var(--card); border:1px solid var(--line); color:var(--ink-2); white-space:nowrap;
+}
+.chip b{color:var(--ink); font-weight:600}
+.crest{
+  flex:0 0 auto; width:112px; height:112px; border-radius:50%;
+  border:2px solid var(--gold); display:grid; place-items:center;
+  background:var(--card); box-shadow:var(--shadow); font-size:46px;
+}
+
+/* ============ NAV ============ */
+nav.tabs{
+  position:sticky; top:0; z-index:50;
+  background:color-mix(in srgb, var(--paper) 88%, transparent);
+  backdrop-filter:saturate(1.4) blur(10px);
+  border-bottom:1px solid var(--line);
+}
+.tabs-inner{display:flex; gap:4px; align-items:center; max-width:1240px; margin:0 auto; padding:0 24px; flex-wrap:wrap}
+.tab-btn{
+  appearance:none; border:0; background:none; cursor:pointer;
+  font-family:"DM Sans",sans-serif; font-size:14px; font-weight:500; color:var(--ink-2);
+  padding:15px 16px; border-bottom:2.5px solid transparent; margin-bottom:-1px;
+  display:flex; align-items:center; gap:7px;
+}
+.tab-btn:hover{color:var(--ink)}
+.tab-btn[aria-selected="true"]{color:var(--ink); border-bottom-color:var(--gold); font-weight:700}
+.tab-btn .n{font-size:11px; color:var(--muted); font-family:"DM Mono",monospace}
+.theme-btn{margin-left:auto; appearance:none; cursor:pointer; background:var(--card); border:1px solid var(--line);
+  color:var(--ink-2); border-radius:999px; padding:6px 13px; font-size:12.5px; font-family:"DM Sans",sans-serif}
+
+main{padding:38px 0 90px}
+.panel[hidden]{display:none !important}
+
+/* ============ SHARED BLOCKS ============ */
+.sec-head{margin:0 0 18px}
+.sec-head h2{font-size:34px; margin:4px 0 6px}
+.sec-head p{color:var(--ink-2); margin:0; max-width:70ch}
+.rule{height:1px; background:linear-gradient(90deg,var(--gold),var(--line) 42%,transparent); margin:34px 0 26px; border:0}
+
+.note{
+  background:var(--card); border:1px solid var(--line);
+  border-left:5px solid var(--gold); border-radius:var(--radius);
+  padding:26px 30px; box-shadow:var(--shadow);
+}
+.note h3{font-size:26px; margin-bottom:8px}
+.note p{margin:0 0 12px; color:var(--ink-2); max-width:74ch}
+.note p:last-child{margin-bottom:0}
+.note strong{color:var(--ink); font-weight:600}
+.sig{font-family:"Cormorant Garamond",serif; font-style:italic; font-size:19px; color:var(--gold-deep); margin-top:16px}
+
+.two-col{display:grid; grid-template-columns:1.15fr .85fr; gap:26px; align-items:start}
+@media (max-width:920px){.two-col{grid-template-columns:1fr}}
+
+.obj{background:var(--p-cream); border:1px solid var(--line); border-radius:var(--radius); padding:24px 28px}
+.obj h3{font-size:24px; margin-bottom:10px}
+.obj ul{margin:0; padding-left:0; list-style:none; display:grid; gap:11px}
+.obj li{display:grid; grid-template-columns:26px 1fr; gap:10px; align-items:start; font-size:14.6px; color:var(--ink-2); line-height:1.5}
+.obj li span.tick{color:var(--gold-deep); font-weight:700; font-family:"DM Mono",monospace; font-size:12px; padding-top:2px}
+.obj li b{color:var(--ink); font-weight:600}
+
+/* ============ OVERVIEW GRID ============ */
+.grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(232px,1fr)); gap:14px}
+.lcard{
+  text-align:left; cursor:pointer; appearance:none; font-family:inherit;
+  background:var(--card); border:1px solid var(--line); border-radius:var(--radius);
+  padding:16px 17px 15px; display:flex; flex-direction:column; gap:7px;
+  transition:transform .16s ease, box-shadow .16s ease, border-color .16s ease;
+  position:relative; overflow:hidden;
+}
+.lcard::before{content:""; position:absolute; inset:0 auto 0 0; width:4px; background:var(--accent,var(--gold))}
+.lcard:hover{transform:translateY(-2px); box-shadow:var(--shadow); border-color:var(--gold)}
+.lcard .num{font-family:"DM Mono",monospace; font-size:11px; color:var(--muted); letter-spacing:.06em}
+.lcard .ico{font-size:24px; line-height:1}
+.lcard h4{font-size:19.5px; line-height:1.22; color:var(--ink)}
+.lcard p{margin:0; font-size:12.8px; color:var(--ink-2); line-height:1.45}
+.lcard .src{margin-top:auto; padding-top:8px; font-size:11px; color:var(--muted); font-family:"DM Mono",monospace}
+
+/* ============ MAP ============ */
+.mapbox{background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:22px; box-shadow:var(--shadow); overflow-x:auto}
+.mapbox svg{display:block; min-width:760px; width:100%; height:auto}
+figcaption{font-size:12.5px; color:var(--muted); margin-top:10px; text-align:center; font-style:italic}
+
+/* ============ LESSONS ============ */
+.lesson-layout{display:grid; grid-template-columns:212px minmax(0,1fr); gap:30px; align-items:start}
+@media (max-width:1000px){.lesson-layout{grid-template-columns:minmax(0,1fr)}}
+.lesson-layout > *{min-width:0}
+.mapbox{min-width:0; max-width:100%}
+.lesson{min-width:0}
+@media (max-width:980px){.lesson{grid-template-columns:minmax(0,1fr)}}
+.gloss{min-width:0}
+@media (max-width:520px){.gloss{grid-template-columns:minmax(0,1fr)}}
+.rail{position:sticky; top:74px; display:flex; flex-direction:column; gap:2px; max-height:calc(100vh - 100px); overflow-y:auto; padding-right:4px}
+@media (max-width:1000px){.rail{position:static; max-height:none; flex-direction:row; flex-wrap:wrap; gap:6px; margin-bottom:14px}}
+.rail-t{font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); font-weight:700; padding:0 0 8px}
+@media (max-width:1000px){.rail-t{display:none}}
+.rail a{
+  display:flex; gap:9px; align-items:baseline; text-decoration:none; color:var(--ink-2);
+  font-size:13.2px; padding:6px 9px; border-radius:8px; border-left:2.5px solid transparent; line-height:1.3;
+}
+.rail a:hover{background:var(--paper-2); color:var(--ink); border-left-color:var(--gold)}
+.rail a .rn{font-family:"DM Mono",monospace; font-size:10.5px; color:var(--muted)}
+
+.lesson{
+  background:var(--card); border:1px solid var(--line); border-radius:18px;
+  padding:26px 28px 24px; margin-bottom:26px; box-shadow:var(--shadow);
+  display:grid; grid-template-columns:minmax(0,1.5fr) minmax(0,1fr); gap:14px 30px;
+  align-items:start;
+}
+@media (max-width:980px){.lesson{grid-template-columns:1fr}}
+.l-head{grid-column:1/-1; border-bottom:1px solid var(--line-soft); padding-bottom:14px; margin-bottom:4px}
+.l-head .kicker{display:flex; align-items:center; gap:10px; margin-bottom:5px}
+.l-head .badge{
+  font-family:"DM Mono",monospace; font-size:11px; letter-spacing:.05em;
+  background:var(--accent-soft,var(--gold-soft)); color:var(--accent-ink,var(--gold-deep));
+  padding:3px 9px; border-radius:6px; font-weight:500;
+}
+.l-head h3{font-size:31px; line-height:1.12; margin:0}
+.l-head .q{margin:7px 0 0; font-size:14.5px; color:var(--ink-2); font-style:italic; max-width:76ch}
+.l-fig{min-width:0; overflow-x:auto}
+.l-fig svg{display:block; width:100%; height:auto; min-width:440px}
+.l-side{min-width:0; display:flex; flex-direction:column; gap:14px}
+.l-side ol{margin:0; padding:0; list-style:none; display:grid; gap:11px; counter-reset:b}
+.l-side ol li{
+  counter-increment:b; position:relative; padding-left:30px;
+  font-size:14.2px; line-height:1.5; color:var(--ink-2);
+}
+.l-side ol li::before{
+  content:counter(b); position:absolute; left:0; top:2px;
+  font-family:"DM Mono",monospace; font-size:10.5px; font-weight:500;
+  color:var(--accent-ink,var(--gold-deep)); background:var(--accent-soft,var(--gold-soft));
+  width:20px; height:20px; border-radius:5px; display:grid; place-items:center;
+}
+.l-side ol li b{color:var(--ink); font-weight:600}
+.term{color:var(--ink); font-weight:600; border-bottom:1.5px dotted var(--gold)}
+.hook{
+  grid-column:1/-1; margin-top:6px;
+  background:var(--p-cream); border:1px dashed var(--gold); border-radius:12px;
+  padding:14px 18px; display:grid; grid-template-columns:32px 1fr; gap:12px; align-items:center;
+}
+.hook .h-ico{font-size:22px; line-height:1}
+.hook .h-t{font-size:10.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--gold-deep); font-weight:700; margin-bottom:1px}
+.hook .h-b{font-family:"Cormorant Garamond",serif; font-size:20.5px; font-style:italic; color:var(--ink); line-height:1.32}
+.exam-tip{
+  grid-column:1/-1; background:var(--p-blue); border:1px solid var(--line); border-radius:12px;
+  padding:12px 16px; font-size:13.4px; color:var(--ink-2); display:grid; grid-template-columns:24px 1fr; gap:10px;
+}
+.exam-tip b{color:var(--ink)}
+
+/* ============ MCQ ============ */
+.q-meta{
+  display:flex; gap:14px; align-items:center; flex-wrap:wrap;
+  background:var(--card); border:1px solid var(--line); border-radius:var(--radius);
+  padding:14px 18px; margin-bottom:22px; box-shadow:var(--shadow); position:sticky; top:66px; z-index:20;
+}
+.score{font-family:"DM Mono",monospace; font-size:14px; color:var(--ink)}
+.score b{font-size:20px; color:var(--gold-deep)}
+.bar{flex:1 1 180px; height:7px; background:var(--line-soft); border-radius:99px; overflow:hidden; min-width:120px}
+.bar i{display:block; height:100%; width:0%; background:var(--gold); border-radius:99px; transition:width .35s ease}
+.reset{appearance:none; cursor:pointer; background:var(--paper-2); border:1px solid var(--line); color:var(--ink-2); border-radius:8px; padding:6px 13px; font-size:12.5px; font-family:"DM Sans",sans-serif}
+
+.q{background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:20px 22px; margin-bottom:14px; box-shadow:var(--shadow)}
+.q .qh{display:flex; gap:11px; align-items:baseline; margin-bottom:12px}
+.q .qn{font-family:"DM Mono",monospace; font-size:11px; color:var(--muted); flex:0 0 auto; padding-top:2px}
+.q .qt{font-size:15.6px; font-weight:500; color:var(--ink); line-height:1.5}
+.q .qtag{font-size:10.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--gold-deep); font-weight:700; margin-bottom:5px}
+.opts{display:grid; gap:8px}
+.opt{
+  appearance:none; cursor:pointer; text-align:left; font-family:inherit; font-size:14.2px; line-height:1.45;
+  background:var(--paper); border:1.5px solid var(--line); border-radius:10px; padding:11px 14px; color:var(--ink-2);
+  display:grid; grid-template-columns:22px 1fr; gap:10px; align-items:start; transition:border-color .14s, background .14s;
+}
+.opt .ol{font-family:"DM Mono",monospace; font-size:11.5px; color:var(--muted); padding-top:2px}
+.opt:hover:not(:disabled){border-color:var(--gold); background:var(--paper-2)}
+.opt:disabled{cursor:default}
+.opt.correct{background:var(--ok-bg); border-color:var(--ok); color:var(--ink)}
+.opt.correct .ol{color:var(--ok)}
+.opt.wrong{background:var(--bad-bg); border-color:var(--bad); color:var(--ink)}
+.opt.wrong .ol{color:var(--bad)}
+.fb{margin-top:12px; border-radius:10px; padding:12px 15px; font-size:13.6px; line-height:1.55; display:none}
+.fb.show{display:block}
+.fb.good{background:var(--ok-bg); border:1px solid var(--ok); color:var(--ink-2)}
+.fb.bad{background:var(--bad-bg); border:1px solid var(--bad); color:var(--ink-2)}
+.fb b{color:var(--ink)}
+
+/* ============ GLOSSARY ============ */
+.gloss{display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:12px}
+.gitem{background:var(--card); border:1px solid var(--line); border-left:3px solid var(--gold); border-radius:10px; padding:13px 16px}
+.gitem dt{font-weight:600; color:var(--ink); font-size:14.5px; margin-bottom:3px}
+.gitem dd{margin:0; font-size:13.2px; color:var(--ink-2); line-height:1.5}
+
+/* SVG helpers */
+.sv-t{font-family:"DM Sans",sans-serif; font-size:13px; fill:var(--ink)}
+.sv-s{font-family:"DM Sans",sans-serif; font-size:11.5px; fill:var(--ink-2)}
+.sv-m{font-family:"DM Mono",monospace; font-size:10.5px; fill:var(--muted); letter-spacing:.04em}
+.sv-h{font-family:"Cormorant Garamond",serif; font-size:17px; font-weight:600; fill:var(--ink)}
+
+/* ---- article-summary additions ---- */
+.doc-layout{display:grid; grid-template-columns:206px minmax(0,1fr); gap:34px; align-items:start}
+.doc-layout > *{min-width:0}
+@media (max-width:1000px){.doc-layout{grid-template-columns:minmax(0,1fr)}}
+.sect{background:var(--card); border:1px solid var(--line); border-radius:16px; padding:26px 30px 24px; min-width:0;
+  margin-bottom:20px; box-shadow:var(--shadow); scroll-margin-top:90px}
+.sect > h3{font-size:29px; line-height:1.15; margin:0 0 4px}
+.sect .snum{font-family:"DM Mono",monospace; font-size:11px; letter-spacing:.1em; color:var(--accent-ink,var(--gold-deep));
+  background:var(--accent-soft,var(--gold-soft)); padding:3px 9px; border-radius:6px; display:inline-block; margin-bottom:9px}
+.sect .lede{color:var(--ink-2); font-size:14.5px; font-style:italic; margin:0 0 16px; max-width:74ch}
+.sect p{font-size:15.2px; line-height:1.62; color:var(--ink-2); margin:0 0 13px; max-width:76ch}
+.sect p b, .sect li b{color:var(--ink); font-weight:600}
+.sect h4{font-size:20px; color:var(--gold-deep); margin:22px 0 9px}
+.sect ul, .sect ol{margin:0 0 14px; padding-left:0; list-style:none; display:grid; gap:10px}
+.sect ul li{position:relative; padding-left:22px; font-size:15px; line-height:1.58; color:var(--ink-2)}
+.sect ul li::before{content:"▸"; position:absolute; left:2px; color:var(--gold-deep)}
+.sect ol{counter-reset:o}
+.sect ol li{counter-increment:o; position:relative; padding-left:32px; font-size:15px; line-height:1.58; color:var(--ink-2)}
+.sect ol li::before{content:counter(o); position:absolute; left:0; top:2px; width:21px; height:21px; border-radius:6px;
+  display:grid; place-items:center; font-family:"DM Mono",monospace; font-size:10.5px; font-weight:500;
+  color:var(--accent-ink,var(--gold-deep)); background:var(--accent-soft,var(--gold-soft))}
+.tbl-wrap{overflow-x:auto; margin:6px 0 8px; min-width:0; max-width:100%}
+table.artbl{border-collapse:collapse; width:100%; min-width:430px; font-size:14px}
+table.artbl th{background:var(--ink); color:var(--card); font-weight:600; text-align:left;
+  padding:9px 13px; font-size:12.5px; letter-spacing:.03em}
+table.artbl th:not(:first-child){text-align:center}
+table.artbl td{padding:9px 13px; border-bottom:1px solid var(--line-soft); color:var(--ink-2); line-height:1.45; vertical-align:top}
+table.artbl td:first-child{color:var(--ink); font-weight:600}
+table.artbl td:not(:first-child){text-align:center; font-variant-numeric:tabular-nums}
+table.artbl tr:nth-child(even) td{background:var(--paper-2)}
+table.artbl tr.hi td{background:var(--gold-soft); color:var(--ink); font-weight:600}
+table.artbl.lefty td:not(:first-child){text-align:left}
+.tcap{font-size:12.5px; color:var(--muted); font-style:italic; margin:2px 0 16px}
+.callout{border-radius:12px; padding:16px 20px; margin:16px 0; display:grid; grid-template-columns:26px 1fr; gap:12px}
+.callout .ci{font-size:18px; line-height:1.2}
+.callout h5{font-size:12px; letter-spacing:.12em; text-transform:uppercase; margin:0 0 6px; font-weight:700; font-family:"DM Sans",sans-serif}
+.callout p{font-size:14.2px; margin:0 0 8px; color:var(--ink-2)}
+.callout p:last-child{margin-bottom:0}
+.c-warn{background:var(--warn-bg); border:1px solid var(--warn)}
+.c-warn h5{color:var(--warn)}
+.c-note{background:var(--p-blue); border:1px solid var(--s1)}
+.c-note h5{color:var(--s1)}
+.c-think{background:var(--p-cream); border:1px dashed var(--gold)}
+.c-think h5{color:var(--gold-deep)}
+.figwrap{background:var(--paper-2); border:1px solid var(--line); border-radius:12px; padding:18px; margin:14px 0 6px; overflow-x:auto; min-width:0; max-width:100%}
+.figwrap svg{display:block; width:100%; height:auto; min-width:400px}
+.rail2{position:sticky; top:74px; display:flex; flex-direction:column; gap:2px; max-height:calc(100vh - 100px); overflow-y:auto}
+@media (max-width:1000px){.rail2{position:static; max-height:none; flex-direction:row; flex-wrap:wrap; gap:6px; margin-bottom:16px}}
+.rail2 a{display:flex; gap:9px; align-items:baseline; text-decoration:none; color:var(--ink-2);
+  font-size:13.2px; padding:6px 9px; border-radius:8px; border-left:2.5px solid transparent; line-height:1.3}
+.rail2 a:hover{background:var(--paper-2); color:var(--ink); border-left-color:var(--gold)}
+.rail2 a .rn{font-family:"DM Mono",monospace; font-size:10.5px; color:var(--muted)}
+.pullq{border-left:5px solid var(--gold); padding:4px 0 4px 20px; margin:14px 0 18px}
+.pullq p{font-family:"Cormorant Garamond",serif; font-size:22px; font-style:italic; color:var(--ink); line-height:1.35; max-width:62ch; margin:0}
+.kv{display:grid; grid-template-columns:repeat(auto-fit,minmax(148px,1fr)); gap:10px; margin:14px 0}
+.kv div{background:var(--paper-2); border:1px solid var(--line); border-radius:10px; padding:12px 14px}
+.kv .n{font-family:"DM Mono",monospace; font-size:21px; color:var(--gold-deep); font-weight:500; display:block}
+.kv .l{font-size:12px; color:var(--ink-2); line-height:1.35; display:block; margin-top:3px}
+.sv-lab{font-family:"DM Sans",sans-serif; font-size:10.5px; font-weight:700; letter-spacing:.11em; fill:var(--gold-deep)}
+/* ---- worked-answers additions ---- */
+.c-plain{background:var(--p-sage); border:1px solid var(--s4)}
+.c-plain h5{color:var(--s4)}
+.c-plain p{font-size:14.8px; line-height:1.62}
+.c-plain p:first-of-type{color:var(--ink)}
+.c-short{background:var(--p-blue); border:1px solid var(--s1)}
+.c-short h5{color:var(--s1)}
+.c-short p{font-size:14.8px; line-height:1.6}
+.srcbar{
+  font-family:"Cormorant Garamond",serif; font-size:clamp(26px,3.2vw,37px); font-weight:600; color:var(--ink);
+  margin:40px 0 18px; padding:0 0 10px; border-bottom:2px solid var(--gold); scroll-margin-top:90px; min-width:0;
+}
+.rail2 .rail-g{font-size:10.5px; letter-spacing:.13em; text-transform:uppercase; color:var(--muted);
+  font-weight:700; padding:13px 9px 4px; margin:0}
+@media (max-width:1000px){.rail2 .rail-g{display:none}}
+
+</style>
+</head>
+<body><header class="masthead">
+  <div class="wrap mh-grid">
+    <div>
+      <p class="eyebrow">A beginner's course · Theme 1 · Cognitive Psychology, Erasmus University Rotterdam</p>
+      <h1 class="mh-title">Attention,<br><em>From Scratch</em></h1>
+      <p class="mh-sub">Eighteen short lessons that assume you know <b>nothing</b> about attention. Each one is a single picture with at most five things to read beside it. No prior knowledge, no jargon until it is defined, nothing skipped.</p>
+      <div class="mh-meta">
+        <span class="chip">🎨 <b>18</b> lessons, one picture each</span>
+        <span class="chip">🌱 <b>zero</b> prior knowledge assumed</span>
+        <span class="chip">🎯 covers all <b>9</b> objectives</span>
+        <span class="chip">🧠 <b>12</b> beginner questions</span>
+      </div>
+    </div>
+    <div class="crest" aria-hidden="true">🔭</div>
+  </div>
+</header>
+
+<nav class="tabs" aria-label="Sections">
+  <div class="tabs-inner">
+    <span class="tab-btn" aria-selected="true" style="cursor:default">🔭 Start at lesson 1 and walk forward</span>
+    <button class="theme-btn" id="themeBtn" type="button">◐ Theme</button>
+  </div>
+</nav>
+
+<main>
+<div class="wrap lesson-layout">
+  <aside class="rail" id="rail"></aside>
+  <div>
+
+<!-- ===== PROFESSOR'S NOTE ===== -->
+<section id="note" style="scroll-margin-top:90px">
+  <div class="two-col" style="margin-bottom:28px">
+    <div class="note">
+      <h3 style="font-size:27px; margin-bottom:12px">A note before you start</h3>
+      <p><strong>Sezen —</strong> this topic has a strange property that nothing else in your course has: <strong>you are the evidence</strong>. Every finding here is about a failure you cannot feel happening. You will read that half of people miss a gorilla walking through the middle of a video they are staring at, and your honest reaction will be "well, I would have seen it". You would probably not have. That gap between what your mind does and what you believe it does is not a footnote — it <em>is</em> the subject.</p>
+      <p>So the order matters. Lessons 1 to 9 show you <strong>what happens</strong> to the things attention leaves out. Lessons 10 to 18 open up the machine and ask <strong>how the gate works</strong>. Do not jump to the theories. They are four names that will slide straight off you unless you have first felt why anyone needed a theory at all.</p>
+      <p><strong>How to read a lesson.</strong> Look at the picture first, for a good ten seconds, before you read a word. Then read the numbered points beside it — there are never more than five. Then read the italic line at the bottom, which is the thing to remember when everything else has faded. If a lesson takes you more than three minutes, you are reading too carefully; come back to it.</p>
+      <p>One promise: by lesson 18 you will be able to draw the whole topic on one page from memory. That is the actual test of whether you understand it.</p>
+      <p class="sig">— your professor</p>
+    </div>
+
+    <div class="obj">
+      <h3>What you will be able to do</h3>
+      <ul>
+        <li><span class="tick">01</span><span>Explain <b>why obvious things go unnoticed</b>, and why that is a fact about the mind and not the eye.</span></li>
+        <li><span class="tick">02</span><span>Name the <b>three things that decide</b> whether you notice something — and say why "how obvious it is" is not one of them.</span></li>
+        <li><span class="tick">03</span><span>Describe how <b>selective attention</b> works, and what it quietly costs you.</span></li>
+        <li><span class="tick">04</span><span>Say what <b>divided attention</b> really is, and why multitasking mostly is not a thing.</span></li>
+        <li><span class="tick">05</span><span>Explain how something <b>catches</b> your attention in a noisy room.</span></li>
+        <li><span class="tick">06</span><span>Say why <b>your own name</b> gets through when other words do not — and why that is a leak, not a skill.</span></li>
+        <li><span class="tick">07</span><span>Answer whether you can <b>process two messages at once</b>, with the evidence.</span></li>
+        <li><span class="tick">08</span><span>Lay out the <b>four theories</b> of selective attention and what each one claims.</span></li>
+        <li><span class="tick">09</span><span>Say exactly <b>how they differ</b> — on two questions, and no more.</span></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== OVERVIEW ===== -->
+<section id="overview" style="scroll-margin-top:90px; margin-bottom:34px">
+  <h2 class="srcbar">The eighteen lessons</h2>
+  <p style="font-size:15px; color:var(--ink-2); max-width:74ch; margin:0 0 18px">Click any card to jump to it. The first nine are about what attention <em>leaves out</em>; the last nine are about how the gate itself works.</p>
+  <div class="grid" id="ovgrid"></div>
+</section>
+
+<h2 class="srcbar" id="partA">Part one — what attention leaves out</h2>
+
+<!-- ===== L1 ===== -->
+<article class="lesson" id="l1" style="--accent:var(--s1); --accent-soft:var(--p-blue); --accent-ink:var(--s1)">
+  <div class="l-head">
+    <div class="kicker"><span class="badge">LESSON 01</span><span class="sv-m" style="color:var(--muted)">the one idea everything rests on</span></div>
+    <h3>Attention is a gate, and it is tiny</h3>
+    <p class="q">Your senses collect far more than your mind can use. Something has to choose. That something is attention.</p>
+  </div>
+
+  <div class="l-fig">
+  <svg viewBox="0 0 540 380" role="img" aria-label="Many sensory inputs funnelling through a narrow attention gate into a small awareness">
+    <defs>
+      <marker id="f1a" markerWidth="8" markerHeight="8" refX="6.5" refY="4" orient="auto">
+        <path d="M0,0 L8,4 L0,8 z" fill="var(--line)"/></marker>
+      <marker id="f1b" markerWidth="9" markerHeight="9" refX="7.5" refY="4.5" orient="auto">
+        <path d="M0,0 L9,4.5 L0,9 z" fill="var(--gold-deep)"/></marker>
+    </defs>
+
+    <text x="12" y="20" class="sv-lab">WHAT ARRIVES</text>
+    <g>
+      <rect x="12" y="32"  width="150" height="26" rx="6" fill="var(--card)" stroke="var(--line)"/>
+      <text x="87" y="49" text-anchor="middle" class="sv-m">the lecturer talking</text>
+      <rect x="12" y="66"  width="150" height="26" rx="6" fill="var(--card)" stroke="var(--line)"/>
+      <text x="87" y="83" text-anchor="middle" class="sv-m">a chair scraping</text>
+      <rect x="12" y="100" width="150" height="26" rx="6" fill="var(--card)" stroke="var(--line)"/>
+      <text x="87" y="117" text-anchor="middle" class="sv-m">your phone buzzing</text>
+      <rect x="12" y="134" width="150" height="26" rx="6" fill="var(--card)" stroke="var(--line)"/>
+      <text x="87" y="151" text-anchor="middle" class="sv-m">the room is too warm</text>
+      <rect x="12" y="168" width="150" height="26" rx="6" fill="var(--card)" stroke="var(--line)"/>
+      <text x="87" y="185" text-anchor="middle" class="sv-m">rain on the window</text>
+      <rect x="12" y="202" width="150" height="26" rx="6" fill="var(--card)" stroke="var(--line)"/>
+      <text x="87" y="219" text-anchor="middle" class="sv-m">words on the slide</text>
+      <rect x="12" y="236" width="150" height="26" rx="6" fill="var(--card)" stroke="var(--line)"/>
+      <text x="87" y="253" text-anchor="middle" class="sv-m">your own hunger</text>
+    </g>
+    <g stroke="var(--line)" stroke-width="1.2" fill="none">
+      <path d="M164 45  C 190 45,  192 106, 212 112" marker-end="url(#f1a)"/>
+      <path d="M164 79  C 190 79,  194 122, 212 128" marker-end="url(#f1a)"/>
+      <path d="M164 113 C 190 113, 196 138, 212 144" marker-end="url(#f1a)"/>
+      <path d="M164 147 C 190 147, 198 154, 212 158" marker-end="url(#f1a)"/>
+      <path d="M164 181 C 190 181, 198 176, 212 172" marker-end="url(#f1a)"/>
+      <path d="M164 215 C 190 215, 196 192, 212 186" marker-end="url(#f1a)"/>
+      <path d="M164 249 C 190 249, 194 208, 212 200" marker-end="url(#f1a)"/>
+    </g>
+
+    <!-- the gate -->
+    <rect x="216" y="96" width="112" height="120" rx="12" fill="var(--gold-soft)" stroke="var(--gold)" stroke-width="2.8"/>
+    <text x="272" y="132" text-anchor="middle" class="sv-s" style="font-weight:700; fill:var(--ink)">ATTENTION</text>
+    <text x="272" y="152" text-anchor="middle" class="sv-m">the gate</text>
+    <line x1="234" y1="170" x2="310" y2="170" stroke="var(--gold)" stroke-width="1.2" stroke-dasharray="4 3"/>
+    <text x="272" y="188" text-anchor="middle" class="sv-m">many in</text>
+    <text x="272" y="204" text-anchor="middle" class="sv-m">one out</text>
+
+    <path d="M272 220 L272 246" stroke="var(--gold-deep)" stroke-width="2" marker-end="url(#f1b)"/>
+
+    <rect x="194" y="254" width="156" height="54" rx="11" fill="var(--p-sage)" stroke="var(--s4)" stroke-width="2"/>
+    <text x="272" y="277" text-anchor="middle" class="sv-t" style="font-weight:700">AWARENESS</text>
+    <text x="272" y="297" text-anchor="middle" class="sv-m">a tiny trickle</text>
+
+    <text x="344" y="118" class="sv-s" style="fill:var(--ink); font-weight:700">Limited capacity</text>
+    <text x="344" y="138" class="sv-s">Only a small amount can</text>
+    <text x="344" y="155" class="sv-s">be processed at once.</text>
+
+    <text x="344" y="188" class="sv-s" style="fill:var(--ink); font-weight:700">This is the whole topic</text>
+    <text x="344" y="208" class="sv-s">Everything else in these</text>
+    <text x="344" y="225" class="sv-s">eighteen lessons is</text>
+    <text x="344" y="242" class="sv-s">about this one gate.</text>
+
+    <rect x="12" y="328" width="516" height="40" rx="9" fill="var(--bad-bg)" stroke="var(--bad)" stroke-width="1.4"/>
+    <text x="270" y="345" text-anchor="middle" class="sv-s" style="fill:var(--ink)">The thing beginners get wrong: what does NOT get through is not “forgotten”.</text>
+    <text x="270" y="362" text-anchor="middle" class="sv-s" style="fill:var(--bad); font-weight:700">It was never processed in the first place. There is nothing to forget.</text>
+  </svg>
+  </div>
+
+  <div class="l-side">
+    <ol>
+      <li>Your eyes and ears <b>collect</b> vastly more than your mind can handle. Nothing is filtered out by the sense organs — all of it arrives.</li>
+      <li><b>Attention</b> is the process that picks some of it for further processing and drops the rest. Think gatekeeper, not amplifier.</li>
+      <li>The gate is <b>small</b>. Only a little gets through at any moment. This is called <span class="term">limited capacity</span>.</li>
+      <li>What gets through becomes an <b>experience</b> — you can report it, remember it, act on it. What does not gets no experience at all.</li>
+      <li>So attention is not about seeing <em>better</em>. It is about seeing <b>selectively</b>, and the cost of that is the next eight lessons.</li>
+    </ol>
+    <div class="hook">
+      <span class="h-ico">🔭</span>
+      <div><p class="h-t">Remember this</p><p class="h-b">Your senses are a wide funnel. Your mind is a narrow spout.</p></div>
+    </div>
+  </div>
+</article>
+
+<!-- ===== L2 ===== -->
+<article class="lesson" id="l2" style="--accent:var(--s4); --accent-soft:var(--p-sage); --accent-ink:var(--s4)">
+  <div class="l-head">
+    <div class="kicker"><span class="badge">LESSON 02</span><span class="sv-m" style="color:var(--muted)">vocabulary you need before anything else</span></div>
+    <h3>Four jobs we give the same gate</h3>
+    <p class="q">“Attention” is one word for four different tasks. Mixing them up is the single most common mistake in this topic.</p>
+  </div>
+
+  <div class="l-fig">
+  <svg viewBox="0 0 540 400" role="img" aria-label="Four kinds of attention: selective, sustained, divided, and task switching">
+    <!-- SELECTIVE -->
+    <rect x="12" y="26" width="250" height="168" rx="12" fill="var(--p-blue)" stroke="var(--s1)" stroke-width="1.8"/>
+    <text x="137" y="50" text-anchor="middle" class="sv-t" style="font-weight:700">1 · SELECTIVE</text>
+    <text x="137" y="68" text-anchor="middle" class="sv-m">one thing, on purpose</text>
+    <circle cx="80"  cy="112" r="20" fill="var(--s1)"/>
+    <text x="80"  y="117" text-anchor="middle" class="sv-m" style="fill:var(--card); font-weight:700">this</text>
+    <circle cx="137" cy="112" r="14" fill="none" stroke="var(--muted)" stroke-width="1.4" stroke-dasharray="3 3"/>
+    <circle cx="186" cy="112" r="14" fill="none" stroke="var(--muted)" stroke-width="1.4" stroke-dasharray="3 3"/>
+    <circle cx="228" cy="112" r="14" fill="none" stroke="var(--muted)" stroke-width="1.4" stroke-dasharray="3 3"/>
+    <text x="137" y="156" text-anchor="middle" class="sv-s">Attend to one stream and</text>
+    <text x="137" y="173" text-anchor="middle" class="sv-s">deliberately block the others.</text>
+
+    <!-- SUSTAINED -->
+    <rect x="278" y="26" width="250" height="168" rx="12" fill="var(--p-sage)" stroke="var(--s4)" stroke-width="1.8"/>
+    <text x="403" y="50" text-anchor="middle" class="sv-t" style="font-weight:700">2 · SUSTAINED</text>
+    <text x="403" y="68" text-anchor="middle" class="sv-m">also called vigilance</text>
+    <line x1="300" y1="112" x2="506" y2="112" stroke="var(--s4)" stroke-width="2.4"/>
+    <circle cx="300" cy="112" r="5" fill="var(--s4)"/>
+    <circle cx="506" cy="112" r="5" fill="var(--s4)"/>
+    <text x="300" y="132" text-anchor="middle" class="sv-m">start</text>
+    <text x="506" y="132" text-anchor="middle" class="sv-m">90 min</text>
+    <text x="403" y="156" text-anchor="middle" class="sv-s">The same selective attention,</text>
+    <text x="403" y="173" text-anchor="middle" class="sv-s">held over a long stretch of time.</text>
+
+    <!-- DIVIDED -->
+    <rect x="12" y="206" width="250" height="168" rx="12" fill="var(--p-blush)" stroke="var(--s2)" stroke-width="1.8"/>
+    <text x="137" y="230" text-anchor="middle" class="sv-t" style="font-weight:700">3 · DIVIDED</text>
+    <text x="137" y="248" text-anchor="middle" class="sv-m">“multitasking”</text>
+    <circle cx="92"  cy="292" r="18" fill="var(--s2)"/>
+    <text x="92"  y="297" text-anchor="middle" class="sv-m" style="fill:var(--card); font-weight:700">A</text>
+    <circle cx="182" cy="292" r="18" fill="var(--s2)"/>
+    <text x="182" y="297" text-anchor="middle" class="sv-m" style="fill:var(--card); font-weight:700">B</text>
+    <text x="137" y="298" text-anchor="middle" class="sv-h" style="font-size:19px">+</text>
+    <text x="137" y="336" text-anchor="middle" class="sv-s">Two things at the same time.</text>
+    <text x="137" y="353" text-anchor="middle" class="sv-s" style="font-weight:700; fill:var(--ink)">Lesson 8: mostly a myth.</text>
+
+    <!-- SWITCHING -->
+    <rect x="278" y="206" width="250" height="168" rx="12" fill="var(--p-lilac)" stroke="var(--s3)" stroke-width="1.8"/>
+    <text x="403" y="230" text-anchor="middle" class="sv-t" style="font-weight:700">4 · TASK SWITCHING</text>
+    <text x="403" y="248" text-anchor="middle" class="sv-m">NOT the same as divided</text>
+    <circle cx="332" cy="292" r="16" fill="var(--s3)"/>
+    <text x="332" y="297" text-anchor="middle" class="sv-m" style="fill:var(--card); font-weight:700">A</text>
+    <circle cx="474" cy="292" r="16" fill="var(--s3)"/>
+    <text x="474" y="297" text-anchor="middle" class="sv-m" style="fill:var(--card); font-weight:700">B</text>
+    <path d="M350 284 C 380 268, 426 268, 456 284" fill="none" stroke="var(--s3)" stroke-width="2"/>
+    <path d="M456 300 C 426 316, 380 316, 350 300" fill="none" stroke="var(--s3)" stroke-width="2"/>
+    <text x="403" y="336" text-anchor="middle" class="sv-s">Hopping between two tasks.</text>
+    <text x="403" y="353" text-anchor="middle" class="sv-s" style="font-weight:700; fill:var(--ink)">Every hop costs you.</text>
+  </svg>
+  </div>
+
+  <div class="l-side">
+    <ol>
+      <li><span class="term">Selective attention</span> — attend to one thing, block out the rest. This is the one the theories in Part two are about.</li>
+      <li><span class="term">Sustained attention</span>, also called <b>vigilance</b> — the same skill, but held for a long time. Airport scanners, proofreading, a two-hour lecture.</li>
+      <li><span class="term">Divided attention</span> — genuinely doing two things at once. Lesson 8 explains why this almost never happens.</li>
+      <li><span class="term">Task switching</span> — hopping back and forth. This is <em>not</em> a synonym for divided attention; it is what actually happens when people think they are multitasking.</li>
+      <li>All four draw on the <b>same limited pool</b> from lesson 1. That is why loading one job damages another.</li>
+    </ol>
+    <div class="hook">
+      <span class="h-ico">🧭</span>
+      <div><p class="h-t">Remember this</p><p class="h-b">One spotlight. Point it, hold it, split it, or move it — those are your four options.</p></div>
+    </div>
+  </div>
+</article>
+
+<!-- ===== L3 ===== -->
+<article class="lesson" id="l3" style="--accent:var(--s2); --accent-soft:var(--p-blush); --accent-ink:var(--s2)">
+  <div class="l-head">
+    <div class="kicker"><span class="badge">LESSON 03</span><span class="sv-m" style="color:var(--muted)">the most famous result in the topic</span></div>
+    <h3>The invisible gorilla</h3>
+    <p class="q">Half the people watching a video missed a woman in a gorilla suit who stopped in the middle of the screen and thumped her chest.</p>
+  </div>
+
+  <div class="l-fig">
+  <svg viewBox="0 0 540 400" role="img" aria-label="The gorilla experiment: attention on the white team means the gorilla is never processed">
+    <text x="12" y="20" class="sv-lab">WHAT YOU WERE TOLD TO DO</text>
+    <rect x="12" y="30" width="516" height="30" rx="7" fill="var(--p-blue)" stroke="var(--s1)" stroke-width="1.4"/>
+    <text x="270" y="50" text-anchor="middle" class="sv-s" style="fill:var(--ink)">“Count the passes made by the players in the <tspan style="font-weight:700">white</tspan> shirts.”</text>
+
+    <!-- the scene -->
+    <rect x="12" y="76" width="340" height="200" rx="10" fill="var(--paper-2)" stroke="var(--line)" stroke-width="1.6"/>
+    <text x="22" y="94" class="sv-m">the video</text>
+
+    <!-- attention spotlight -->
+    <ellipse cx="130" cy="172" rx="94" ry="58" fill="var(--gold-soft)" opacity=".75"/>
+    <ellipse cx="130" cy="172" rx="94" ry="58" fill="none" stroke="var(--gold)" stroke-width="2.4" stroke-dasharray="7 4"/>
+    <text x="130" y="128" text-anchor="middle" class="sv-m" style="fill:var(--gold-deep); font-weight:700">your attention</text>
+
+    <!-- white players -->
+    <g>
+      <circle cx="86"  cy="168" r="13" fill="var(--card)" stroke="var(--ink-2)" stroke-width="1.6"/>
+      <circle cx="130" cy="192" r="13" fill="var(--card)" stroke="var(--ink-2)" stroke-width="1.6"/>
+      <circle cx="174" cy="162" r="13" fill="var(--card)" stroke="var(--ink-2)" stroke-width="1.6"/>
+      <circle cx="120" cy="148" r="6" fill="var(--gold-deep)"/>
+      <text x="130" y="242" text-anchor="middle" class="sv-m">white team + the ball</text>
+    </g>
+
+    <!-- gorilla -->
+    <g>
+      <circle cx="288" cy="162" r="24" fill="var(--ink)" opacity=".82"/>
+      <circle cx="280" cy="156" r="3" fill="var(--card)"/>
+      <circle cx="296" cy="156" r="3" fill="var(--card)"/>
+      <path d="M278 170 Q 288 178 298 170" fill="none" stroke="var(--card)" stroke-width="1.6"/>
+      <text x="288" y="204" text-anchor="middle" class="sv-m" style="font-weight:700">a gorilla</text>
+      <text x="288" y="220" text-anchor="middle" class="sv-m">9 seconds</text>
+    </g>
+
+    <text x="182" y="266" text-anchor="middle" class="sv-s" style="fill:var(--bad); font-weight:700">Outside the circle → no experience of it at all</text>
+
+    <!-- result -->
+    <rect x="366" y="76" width="162" height="200" rx="11" fill="var(--bad-bg)" stroke="var(--bad)" stroke-width="2"/>
+    <text x="447" y="102" text-anchor="middle" class="sv-s" style="font-weight:700; fill:var(--ink)">THE RESULT</text>
+    <text x="447" y="146" text-anchor="middle" class="sv-h" style="font-size:44px; fill:var(--bad)">½</text>
+    <text x="447" y="174" text-anchor="middle" class="sv-s" style="fill:var(--ink)">of viewers never</text>
+    <text x="447" y="191" text-anchor="middle" class="sv-s" style="fill:var(--ink)">saw the gorilla</text>
+    <text x="447" y="216" text-anchor="middle" class="sv-m">Simons &amp; Chabris</text>
+    <text x="447" y="231" text-anchor="middle" class="sv-m">(1999)</text>
+    <text x="447" y="256" text-anchor="middle" class="sv-m">46% overall</text>
+
+    <line x1="12" y1="292" x2="528" y2="292" stroke="var(--line)"/>
+    <text x="12" y="312" class="sv-lab">THE NAME FOR THIS</text>
+    <rect x="12" y="322" width="516" height="60" rx="10" fill="var(--gold-soft)" stroke="var(--gold)" stroke-width="1.8"/>
+    <text x="270" y="344" text-anchor="middle" class="sv-t" style="font-weight:700">INATTENTIONAL BLINDNESS</text>
+    <text x="270" y="366" text-anchor="middle" class="sv-s" style="fill:var(--ink)">failing to notice something <tspan style="font-weight:700">fully visible</tspan> but <tspan style="font-weight:700">unexpected</tspan>, because attention was elsewhere</text>
+  </svg>
+  </div>
+
+  <div class="l-side">
+    <ol>
+      <li>People watched a video of two teams passing a ball, and were told to <b>count the passes by the white team</b>. That is the job that eats their attention.</li>
+      <li>Partway through, a woman in a gorilla suit <b>walked in, faced the camera, thumped her chest</b> and walked off — nine seconds, middle of the screen.</li>
+      <li>About <b>half</b> never saw her. Across every condition of the study, 46% missed the unexpected event.</li>
+      <li>This is <span class="term">inattentional blindness</span>. Note that <b>both</b> conditions matter: the thing must be fully visible <em>and</em> unexpected.</li>
+      <li>Nothing was wrong with their eyes. The gorilla landed perfectly on the retina. There was simply no attention left to turn it into an experience.</li>
+    </ol>
+    <div class="hook">
+      <span class="h-ico">🦍</span>
+      <div><p class="h-t">Remember this</p><p class="h-b">The gorilla was never in the dark. Your torch was pointed somewhere else.</p></div>
+    </div>
+  </div>
+</article>
+
+<!-- ===== L4 ===== -->
+<article class="lesson" id="l4" style="--accent:var(--s3); --accent-soft:var(--p-lilac); --accent-ink:var(--s3)">
+  <div class="l-head">
+    <div class="kicker"><span class="badge">LESSON 04</span><span class="sv-m" style="color:var(--muted)">why the result feels impossible</span></div>
+    <h3>Everyone is certain it would not happen to them</h3>
+    <p class="q">We are most confident about exactly the thing we are worst at. That gap is why this research matters practically.</p>
+  </div>
+
+  <div class="l-fig">
+  <svg viewBox="0 0 540 360" role="img" aria-label="The gap between how many people believe they would notice and how many actually do">
+    <text x="12" y="20" class="sv-lab" style="fill:var(--s1)">WHAT PEOPLE BELIEVE</text>
+
+    <g class="sv-s" text-anchor="end" style="fill:var(--ink)">
+      <text x="196" y="48">“I would spot the gorilla”</text>
+      <text x="196" y="80">“people generally notice”</text>
+    </g>
+    <rect x="206" y="34" width="273" height="18" rx="3" fill="var(--s1)"/>
+    <rect x="206" y="66" width="237" height="18" rx="3" fill="var(--s1)"/>
+    <text x="487" y="48" class="sv-s" style="font-weight:700; fill:var(--ink)">90%</text>
+    <text x="451" y="80" class="sv-s" style="font-weight:700; fill:var(--ink)">78%</text>
+
+    <line x1="12" y1="104" x2="528" y2="104" stroke="var(--line)" stroke-dasharray="5 4"/>
+
+    <text x="12" y="128" class="sv-lab" style="fill:var(--s2)">WHAT ACTUALLY HAPPENS</text>
+    <g class="sv-s" text-anchor="end" style="fill:var(--ink)">
+      <text x="196" y="156">missed it (all conditions)</text>
+      <text x="196" y="188">missed the gorilla</text>
+      <text x="196" y="220">missed a staged fight, at night</text>
+      <text x="196" y="252">radiologists, gorilla in a CT scan</text>
+    </g>
+    <rect x="206" y="142" width="140" height="18" rx="3" fill="var(--s2)"/>
+    <rect x="206" y="174" width="152" height="18" rx="3" fill="var(--s2)"/>
+    <rect x="206" y="206" width="197" height="18" rx="3" fill="var(--s2)"/>
+    <rect x="206" y="238" width="252" height="18" rx="3" fill="var(--gold-deep)"/>
+    <text x="354" y="156" class="sv-s" style="font-weight:700; fill:var(--ink)">46%</text>
+    <text x="366" y="188" class="sv-s" style="font-weight:700; fill:var(--ink)">50%</text>
+    <text x="411" y="220" class="sv-s" style="font-weight:700; fill:var(--ink)">65%</text>
+    <text x="466" y="252" class="sv-s" style="font-weight:700; fill:var(--ink)">83%</text>
+
+    <line x1="206" y1="268" x2="510" y2="268" stroke="var(--ink-2)" stroke-width="1.2"/>
+    <g stroke="var(--line)" stroke-width="1" stroke-dasharray="3 4">
+      <line x1="282" y1="28" x2="282" y2="268"/><line x1="358" y1="28" x2="358" y2="268"/>
+      <line x1="434" y1="28" x2="434" y2="268"/><line x1="510" y1="28" x2="510" y2="268"/>
+    </g>
+    <g class="sv-m" text-anchor="middle">
+      <text x="206" y="282">0</text><text x="282" y="282">25</text><text x="358" y="282">50</text>
+      <text x="434" y="282">75</text><text x="510" y="282">100%</text>
+    </g>
+
+    <rect x="12" y="298" width="516" height="52" rx="10" fill="var(--p-cream)" stroke="var(--gold)" stroke-width="1.6" stroke-dasharray="5 3"/>
+    <text x="270" y="320" text-anchor="middle" class="sv-s" style="fill:var(--ink)">Why are we so wrong? Because we only ever experience <tspan style="font-weight:700">what we did notice.</tspan></text>
+    <text x="270" y="340" text-anchor="middle" class="sv-s" style="fill:var(--ink)">We never get shown the things we missed — so we conclude we do not miss things.</text>
+  </svg>
+  </div>
+
+  <div class="l-side">
+    <ol>
+      <li><b>90%</b> of people say they would spot the gorilla. <b>78%</b> of a national survey agreed that people generally notice unexpected things.</li>
+      <li>The real numbers run the other way, and they get worse as the task gets harder or more realistic.</li>
+      <li>Jogging past a staged fight at night, <b>65%</b> missed it — a simulation of a real case where a police officer was convicted of lying for saying he had not seen a beating.</li>
+      <li>Expertise does not save you. <b>83%</b> of expert radiologists missed a gorilla forty-eight times the size of a lung nodule, inserted into a CT scan they were reading.</li>
+      <li>The reason for the illusion is simple: you are <b>vividly aware of what you noticed</b> and completely unaware of what you missed. So your experience looks complete from the inside.</li>
+    </ol>
+    <div class="hook">
+      <span class="h-ico">🪞</span>
+      <div><p class="h-t">Remember this</p><p class="h-b">You cannot notice what you failed to notice. That is why the confidence survives.</p></div>
+    </div>
+  </div>
+</article>
+
+<!-- ===== L5 ===== -->
+<article class="lesson" id="l5" style="--accent:var(--s1); --accent-soft:var(--p-blue); --accent-ink:var(--s1)">
+  <div class="l-head">
+    <div class="kicker"><span class="badge">LESSON 05</span><span class="sv-m" style="color:var(--muted)">objective A2, answered</span></div>
+    <h3>Three dials decide whether you notice</h3>
+    <p class="q">And “how obvious the thing is” is not one of them. That is the surprise.</p>
+  </div>
+
+  <div class="l-fig">
+  <svg viewBox="0 0 540 400" role="img" aria-label="Three dials that determine noticing: similarity, load, and where attention is pointed">
+    <text x="270" y="20" text-anchor="middle" class="sv-lab">TURN THESE THREE AND NOTICING CHANGES</text>
+
+    <!-- dial 1 -->
+    <rect x="12" y="32" width="516" height="104" rx="11" fill="var(--p-blue)" stroke="var(--s1)" stroke-width="1.8"/>
+    <text x="24" y="56" class="sv-t" style="font-weight:700">DIAL 1 · SIMILARITY</text>
+    <text x="24" y="76" class="sv-s">How much the surprise looks like what you are already watching.</text>
+    <rect x="24" y="88" width="228" height="36" rx="7" fill="var(--card)" stroke="var(--bad)" stroke-width="1.4"/>
+    <text x="138" y="104" text-anchor="middle" class="sv-m">counting the WHITE team</text>
+    <text x="138" y="118" text-anchor="middle" class="sv-m" style="fill:var(--bad); font-weight:700">→ you miss the dark gorilla</text>
+    <rect x="264" y="88" width="252" height="36" rx="7" fill="var(--card)" stroke="var(--ok)" stroke-width="1.4"/>
+    <text x="390" y="104" text-anchor="middle" class="sv-m">counting the BLACK team</text>
+    <text x="390" y="118" text-anchor="middle" class="sv-m" style="fill:var(--ok); font-weight:700">→ you see it far more often</text>
+
+    <!-- dial 2 -->
+    <rect x="12" y="146" width="516" height="104" rx="11" fill="var(--p-blush)" stroke="var(--s2)" stroke-width="1.8"/>
+    <text x="24" y="170" class="sv-t" style="font-weight:700">DIAL 2 · HOW HARD YOUR TASK IS</text>
+    <text x="24" y="190" class="sv-s">The more the task eats, the less is left over to catch anything else.</text>
+    <line x1="40" y1="222" x2="500" y2="222" stroke="var(--s2)" stroke-width="2.6"/>
+    <circle cx="40"  cy="222" r="6" fill="var(--ok)"/>
+    <circle cx="270" cy="222" r="6" fill="var(--warn)"/>
+    <circle cx="500" cy="222" r="6" fill="var(--bad)"/>
+    <text x="40"  y="212" text-anchor="start"  class="sv-m">easy task</text>
+    <text x="270" y="212" text-anchor="middle" class="sv-m">count two kinds of pass</text>
+    <text x="500" y="212" text-anchor="end"    class="sv-m">very hard task</text>
+    <text x="40"  y="240" text-anchor="start"  class="sv-m" style="fill:var(--ok); font-weight:700">MORE noticing</text>
+    <text x="500" y="240" text-anchor="end"    class="sv-m" style="fill:var(--bad); font-weight:700">LESS noticing</text>
+
+    <!-- dial 3 -->
+    <rect x="12" y="260" width="516" height="82" rx="11" fill="var(--p-lilac)" stroke="var(--s3)" stroke-width="1.8"/>
+    <text x="24" y="284" class="sv-t" style="font-weight:700">DIAL 3 · WHERE ATTENTION IS POINTED</text>
+    <text x="24" y="304" class="sv-s">Which is <tspan style="font-style:italic">not</tspan> the same as where your eyes are pointed — see the next lesson.</text>
+    <text x="24" y="328" class="sv-m" style="fill:var(--s3); font-weight:700">unattended → not noticed, full stop</text>
+
+    <rect x="12" y="352" width="516" height="40" rx="9" fill="var(--bad-bg)" stroke="var(--bad)" stroke-width="1.6"/>
+    <text x="270" y="369" text-anchor="middle" class="sv-s" style="fill:var(--ink)">NOT a dial: how obvious the thing is. 30% missed a <tspan style="font-weight:700">bright red cross</tspan> —</text>
+    <text x="270" y="386" text-anchor="middle" class="sv-s" style="fill:var(--ink)">the only coloured item on the screen, visible for five whole seconds.</text>
+  </svg>
+  </div>
+
+  <div class="l-side">
+    <ol>
+      <li><b>Similarity.</b> If the surprise resembles what you are tracking, you notice it. Count the black team and the dark gorilla shows up; count the white team and it vanishes.</li>
+      <li><b>Attentional load.</b> The harder your real task, the less noticing. Counting bounce and aerial passes <em>separately</em> makes people miss more.</li>
+      <li><b>Where attention is pointed.</b> Without attention on the unexpected event, you are unlikely to become aware of it. No exceptions.</li>
+      <li>Notice what is missing from the list: <b>conspicuity</b>. A bright red cross, the only colour on screen, visible for five seconds, was missed by 30% of people.</li>
+      <li>So you are not filtering by "how much does this stand out". You are filtering by <b>what you set yourself to look for</b> — "white shirts" — and everything failing that description is dropped.</li>
+    </ol>
+    <div class="hook">
+      <span class="h-ico">🎚️</span>
+      <div><p class="h-t">Remember this</p><p class="h-b">What you see is what you <em>set</em>. Not what shouts loudest.</p></div>
+    </div>
+  </div>
+</article>
+
+<!-- ===== L6 ===== -->
+<article class="lesson" id="l6" style="--accent:var(--s3); --accent-soft:var(--p-lilac); --accent-ink:var(--s3)">
+  <div class="l-head">
+    <div class="kicker"><span class="badge">LESSON 06</span><span class="sv-m" style="color:var(--muted)">the distinction that makes it all click</span></div>
+    <h3>Looking is not seeing</h3>
+    <p class="q">Your eyes can be aimed straight at something while your attention is completely elsewhere. They are two separate things.</p>
+  </div>
+
+  <div class="l-fig">
+  <svg viewBox="0 0 540 330" role="img" aria-label="An eye pointed at the gorilla while the attention spotlight is elsewhere">
+    <defs><marker id="e6" markerWidth="9" markerHeight="9" refX="7.5" refY="4.5" orient="auto">
+      <path d="M0,0 L9,4.5 L0,9 z" fill="var(--s1)"/></marker></defs>
+
+    <text x="12" y="20" class="sv-lab">TWO DIFFERENT ARROWS, AND THEY CAN POINT DIFFERENT WAYS</text>
+
+    <!-- eye -->
+    <ellipse cx="62" cy="76" rx="34" ry="21" fill="var(--card)" stroke="var(--ink-2)" stroke-width="1.8"/>
+    <circle cx="62" cy="76" r="10" fill="var(--ink)"/>
+    <circle cx="58" cy="72" r="3.2" fill="var(--card)"/>
+    <text x="62" y="114" text-anchor="middle" class="sv-m" style="font-weight:700">your eye</text>
+
+    <!-- gaze line -->
+    <path d="M100 76 L 372 76" stroke="var(--s1)" stroke-width="2.6" marker-end="url(#e6)"/>
+    <text x="238" y="66" text-anchor="middle" class="sv-s" style="fill:var(--s1); font-weight:700">GAZE — where the eye is pointing</text>
+
+    <!-- gorilla at gaze target -->
+    <circle cx="410" cy="76" r="26" fill="var(--ink)" opacity=".82"/>
+    <circle cx="401" cy="70" r="3" fill="var(--card)"/>
+    <circle cx="419" cy="70" r="3" fill="var(--card)"/>
+    <path d="M399 85 Q 410 94 421 85" fill="none" stroke="var(--card)" stroke-width="1.6"/>
+    <text x="410" y="122" text-anchor="middle" class="sv-m" style="font-weight:700">the gorilla</text>
+    <text x="410" y="138" text-anchor="middle" class="sv-m">you are looking at it</text>
+
+    <!-- attention spotlight elsewhere -->
+    <ellipse cx="152" cy="178" rx="102" ry="40" fill="var(--gold-soft)" opacity=".85"/>
+    <ellipse cx="152" cy="178" rx="102" ry="40" fill="none" stroke="var(--gold)" stroke-width="2.4" stroke-dasharray="7 4"/>
+    <text x="152" y="174" text-anchor="middle" class="sv-s" style="fill:var(--gold-deep); font-weight:700">ATTENTION</text>
+    <text x="152" y="192" text-anchor="middle" class="sv-m">busy counting passes</text>
+    <text x="284" y="174" class="sv-s" style="fill:var(--ink)">…pointing somewhere</text>
+    <text x="284" y="192" class="sv-s" style="fill:var(--ink)">completely different.</text>
+
+    <rect x="12" y="228" width="516" height="54" rx="10" fill="var(--bad-bg)" stroke="var(--bad)" stroke-width="1.8"/>
+    <text x="270" y="250" text-anchor="middle" class="sv-s" style="font-weight:700; fill:var(--ink)">THE MEASUREMENT · MEMMERT (2006)</text>
+    <text x="270" y="272" text-anchor="middle" class="sv-s" style="fill:var(--ink)">People who MISSED the gorilla stared at it <tspan style="font-weight:700">as long as the people who saw it.</tspan></text>
+
+    <rect x="12" y="292" width="516" height="32" rx="8" fill="var(--gold-soft)" stroke="var(--gold)" stroke-width="1.4"/>
+    <text x="270" y="312" text-anchor="middle" class="sv-s" style="fill:var(--ink)">Simons to cyclists: do not assume the driver sees you, even if they appear to make eye contact.</text>
+  </svg>
+  </div>
+
+  <div class="l-side">
+    <ol>
+      <li>There are <b>two</b> arrows in your head: where the <b>eye</b> points, and where <b>attention</b> points. Most beginners assume they are one arrow.</li>
+      <li>They can come apart. Memmert (2006) recorded eye movements and found that people who <b>missed</b> the gorilla had fixated it for just as long as those who saw it.</li>
+      <li>So the gorilla's image was on their retina, in focus, for seconds — and produced no experience.</li>
+      <li>This is also why the limit is not visual at all: you can even miss a visual object while your resources are busy with a pure <b>memory</b> task.</li>
+      <li>The practical version is Simons's own warning to cyclists: apparent eye contact is not evidence that the driver has seen you.</li>
+    </ol>
+    <div class="hook">
+      <span class="h-ico">👁️</span>
+      <div><p class="h-t">Remember this</p><p class="h-b">The eye is the camera. Attention is the person watching the footage — and they can look away.</p></div>
+    </div>
+  </div>
+</article>
+
+<!-- ===== L7 ===== -->
+<article class="lesson" id="l7" style="--accent:var(--s4); --accent-soft:var(--p-sage); --accent-ink:var(--s4)">
+  <div class="l-head">
+    <div class="kicker"><span class="badge">LESSON 07</span><span class="sv-m" style="color:var(--muted)">three failures students constantly confuse</span></div>
+    <h3>Blindness, change blindness, and the blink</h3>
+    <p class="q">Three different ways awareness fails. The exam wants you to tell them apart, and the trick for doing so is embarrassingly simple.</p>
+  </div>
+
+  <div class="l-fig">
+  <svg viewBox="0 0 540 418" role="img" aria-label="Inattentional blindness needs one image, change blindness needs two, the attentional blink is about time">
+    <!-- IB -->
+    <rect x="12" y="26" width="516" height="102" rx="11" fill="var(--p-blush)" stroke="var(--s2)" stroke-width="1.8"/>
+    <text x="24" y="50" class="sv-t" style="font-weight:700">INATTENTIONAL BLINDNESS</text>
+    <rect x="24" y="62" width="70" height="52" rx="6" fill="var(--card)" stroke="var(--s2)" stroke-width="1.6"/>
+    <text x="59" y="94" text-anchor="middle" class="sv-h" style="font-size:26px">1</text>
+    <text x="112" y="80" class="sv-s" style="fill:var(--ink)">You need <tspan style="font-weight:700">ONE</tspan> picture — the one with the surprise in it.</text>
+    <text x="112" y="100" class="sv-s">It is a failure of <tspan style="font-weight:700; fill:var(--ink)">attentional selection</tspan>. No memory involved.</text>
+    <text x="112" y="118" class="sv-m">the gorilla · the red cross · the unicycling clown</text>
+
+    <!-- CB -->
+    <rect x="12" y="140" width="516" height="102" rx="11" fill="var(--p-blue)" stroke="var(--s1)" stroke-width="1.8"/>
+    <text x="24" y="164" class="sv-t" style="font-weight:700">CHANGE BLINDNESS</text>
+    <rect x="24" y="176" width="46" height="52" rx="6" fill="var(--card)" stroke="var(--s1)" stroke-width="1.6"/>
+    <text x="47" y="208" text-anchor="middle" class="sv-h" style="font-size:24px">1</text>
+    <rect x="76" y="176" width="26" height="52" rx="5" fill="var(--paper-2)" stroke="var(--line)" stroke-width="1.2" stroke-dasharray="3 3"/>
+    <text x="89" y="206" text-anchor="middle" class="sv-m">gap</text>
+    <rect x="108" y="176" width="46" height="52" rx="6" fill="var(--card)" stroke="var(--s1)" stroke-width="1.6"/>
+    <text x="131" y="208" text-anchor="middle" class="sv-h" style="font-size:24px">2</text>
+    <text x="172" y="194" class="sv-s" style="fill:var(--ink)">You need <tspan style="font-weight:700">TWO</tspan> pictures, with a blink or blank between them.</text>
+    <text x="172" y="214" class="sv-s">So it also needs <tspan style="font-weight:700; fill:var(--ink)">memory and comparison</tspan> — a different mechanism.</text>
+    <text x="172" y="232" class="sv-m">the flicker task · the door study (7 of 15)</text>
+
+    <!-- AB -->
+    <rect x="12" y="254" width="516" height="120" rx="11" fill="var(--p-lilac)" stroke="var(--s3)" stroke-width="1.8"/>
+    <text x="24" y="278" class="sv-t" style="font-weight:700">ATTENTIONAL BLINK</text>
+    <line x1="24" y1="306" x2="270" y2="306" stroke="var(--s3)" stroke-width="1.6"/>
+    <g fill="var(--card)" stroke="var(--line)" stroke-width="1">
+      <rect x="24"  y="296" width="14" height="20" rx="2"/><rect x="42" y="296" width="14" height="20" rx="2"/>
+      <rect x="98"  y="296" width="14" height="20" rx="2"/><rect x="116" y="296" width="14" height="20" rx="2"/>
+      <rect x="134" y="296" width="14" height="20" rx="2"/>
+      <rect x="190" y="296" width="14" height="20" rx="2"/><rect x="208" y="296" width="14" height="20" rx="2"/>
+      <rect x="244" y="296" width="14" height="20" rx="2"/>
+    </g>
+    <rect x="60"  y="294" width="16" height="24" rx="3" fill="var(--s3)"/>
+    <rect x="164" y="294" width="16" height="24" rx="3" fill="var(--bad)"/>
+    <text x="68"  y="290" text-anchor="middle" class="sv-m" style="fill:var(--s3); font-weight:700">T1</text>
+    <text x="172" y="290" text-anchor="middle" class="sv-m" style="fill:var(--bad); font-weight:700">T2</text>
+    <path d="M84 326 L158 326" stroke="var(--bad)" stroke-width="1.4"/>
+    <text x="121" y="340" text-anchor="middle" class="sv-m" style="fill:var(--bad)">200–500 ms</text>
+    <text x="288" y="290" class="sv-s" style="fill:var(--ink)">Items flash past at ten per second.</text>
+    <text x="288" y="308" class="sv-s" style="fill:var(--ink)">Catch the first target and you</text>
+    <text x="288" y="326" class="sv-s" style="fill:var(--ink)"><tspan style="font-weight:700">miss a second</tspan> 200–500 ms later.</text>
+    <text x="288" y="346" class="sv-s">A failure in <tspan style="font-weight:700; fill:var(--ink)">time</tspan>, not in space.</text>
+    <text x="288" y="362" class="sv-m">Raymond, Shapiro &amp; Arnell (1992)</text>
+
+    <rect x="12" y="386" width="516" height="24" rx="7" fill="var(--gold-soft)" stroke="var(--gold)" stroke-width="1.4"/>
+    <text x="270" y="402" text-anchor="middle" class="sv-s" style="fill:var(--ink); font-weight:700">The trick: count the pictures. One = inattentional. Two = change. A clock = the blink.</text>
+  </svg>
+  </div>
+
+  <div class="l-side">
+    <ol>
+      <li><b>Inattentional blindness</b> needs <b>one</b> image — the one containing the surprise. You fail to select it. Nothing to do with memory.</li>
+      <li><b>Change blindness</b> needs <b>two</b> images with a disruption between them. Because you must compare them, it also involves <b>memory</b>. That makes it a genuinely different mechanism.</li>
+      <li>The famous change-blindness demo: someone asking for directions was <b>swapped for a different person</b> behind a passing door. Only 7 of 15 pedestrians noticed.</li>
+      <li>The <b>attentional blink</b> is about <b>time</b>. Items flash past at ten a second; catch the first target and you are briefly blind to a second one arriving 200–500 ms later.</li>
+      <li>Treating change blindness and inattentional blindness as the same thing is the commonest error in textbooks. Keep them separate.</li>
+    </ol>
+    <div class="exam-tip">
+      <span>📌</span>
+      <div><b>From outside your two readings.</b> Your problem brief names change blindness and the attentional blink, but neither Simons nor Sternberg covers them. Say so if you use them — it shows you know where your sources end.</div>
+    </div>
+    <div class="hook">
+      <span class="h-ico">🔢</span>
+      <div><p class="h-t">Remember this</p><p class="h-b">One picture, two pictures, or a stopwatch. That is the whole distinction.</p></div>
+    </div>
+  </div>
+</article>
+
+<!-- ===== L8 ===== -->
+<article class="lesson" id="l8" style="--accent:var(--s2); --accent-soft:var(--p-blush); --accent-ink:var(--s2)">
+  <div class="l-head">
+    <div class="kicker"><span class="badge">LESSON 08</span><span class="sv-m" style="color:var(--muted)">objective A4, answered</span></div>
+    <h3>Multitasking is switching in disguise</h3>
+    <p class="q">You do not have two spotlights. You have one, moving fast, and every move costs you something.</p>
+  </div>
+
+  <div class="l-fig">
+  <svg viewBox="0 0 540 380" role="img" aria-label="The myth of two spotlights versus the reality of one spotlight switching">
+    <!-- MYTH -->
+    <rect x="12" y="26" width="516" height="130" rx="11" fill="var(--bad-bg)" stroke="var(--bad)" stroke-width="1.8" stroke-dasharray="6 4"/>
+    <text x="24" y="50" class="sv-t" style="font-weight:700; fill:var(--bad)">✗ WHAT IT FEELS LIKE</text>
+    <text x="24" y="70" class="sv-s">Two beams, both on, all the time.</text>
+    <ellipse cx="160" cy="112" rx="62" ry="30" fill="var(--gold-soft)" opacity=".85" stroke="var(--gold)" stroke-width="1.8"/>
+    <text x="160" y="117" text-anchor="middle" class="sv-s" style="fill:var(--ink); font-weight:700">TASK A</text>
+    <ellipse cx="330" cy="112" rx="62" ry="30" fill="var(--gold-soft)" opacity=".85" stroke="var(--gold)" stroke-width="1.8"/>
+    <text x="330" y="117" text-anchor="middle" class="sv-s" style="fill:var(--ink); font-weight:700">TASK B</text>
+    <text x="448" y="106" text-anchor="middle" class="sv-m" style="fill:var(--bad)">both fully</text>
+    <text x="448" y="122" text-anchor="middle" class="sv-m" style="fill:var(--bad)">attended</text>
+
+    <!-- REALITY -->
+    <rect x="12" y="168" width="516" height="158" rx="11" fill="var(--p-sage)" stroke="var(--s4)" stroke-width="1.8"/>
+    <text x="24" y="192" class="sv-t" style="font-weight:700; fill:var(--s4)">✓ WHAT ACTUALLY HAPPENS</text>
+    <text x="24" y="212" class="sv-s">One beam, hopping. Read this left to right as time passing.</text>
+
+    <line x1="30" y1="300" x2="506" y2="300" stroke="var(--ink-2)" stroke-width="1.4"/>
+    <text x="268" y="318" text-anchor="middle" class="sv-m">time →</text>
+
+    <g>
+      <rect x="34"  y="230" width="64" height="26" rx="5" fill="var(--s1)"/>
+      <text x="66"  y="248" text-anchor="middle" class="sv-m" style="fill:var(--card); font-weight:700">A</text>
+      <rect x="118" y="264" width="52" height="26" rx="5" fill="var(--s2)"/>
+      <text x="144" y="282" text-anchor="middle" class="sv-m" style="fill:var(--card); font-weight:700">B</text>
+      <rect x="190" y="230" width="72" height="26" rx="5" fill="var(--s1)"/>
+      <text x="226" y="248" text-anchor="middle" class="sv-m" style="fill:var(--card); font-weight:700">A</text>
+      <rect x="282" y="264" width="58" height="26" rx="5" fill="var(--s2)"/>
+      <text x="311" y="282" text-anchor="middle" class="sv-m" style="fill:var(--card); font-weight:700">B</text>
+      <rect x="360" y="230" width="58" height="26" rx="5" fill="var(--s1)"/>
+      <text x="389" y="248" text-anchor="middle" class="sv-m" style="fill:var(--card); font-weight:700">A</text>
+      <rect x="438" y="264" width="62" height="26" rx="5" fill="var(--s2)"/>
+      <text x="469" y="282" text-anchor="middle" class="sv-m" style="fill:var(--card); font-weight:700">B</text>
+    </g>
+    <g stroke="var(--bad)" stroke-width="2" fill="none">
+      <path d="M100 250 L116 266"/><path d="M172 278 L188 252"/>
+      <path d="M264 250 L280 266"/><path d="M342 278 L358 252"/>
+      <path d="M420 250 L436 266"/>
+    </g>
+    <text x="108" y="222" class="sv-m" style="fill:var(--bad); font-weight:700">every hop costs time and accuracy</text>
+
+    <rect x="12" y="338" width="516" height="34" rx="9" fill="var(--gold-soft)" stroke="var(--gold)" stroke-width="1.6"/>
+    <text x="270" y="360" text-anchor="middle" class="sv-s" style="fill:var(--ink)">“There really is no such thing as multi-tasking. Instead, people are just <tspan style="font-weight:700">rapidly switching</tspan>.”</text>
+  </svg>
+  </div>
+
+  <div class="l-side">
+    <ol>
+      <li>It <b>feels</b> like two beams on at once. It is one beam moving, and while it is on task B, task A is genuinely unattended.</li>
+      <li>Each hop has a price — slower responses and more errors. That is why <b>task switching</b> is studied as its own topic in your lecture.</li>
+      <li>The second task does not have to be in the same sense. A purely <b>auditory</b> distraction (a phone call) produces a purely <b>visual</b> failure. One pool, many senses.</li>
+      <li>Simons is blunt about it: "Although people believe they can multitask, <b>few can</b>."</li>
+      <li>The dangerous part is the next lesson: you cannot feel the cost while you are paying it.</li>
+    </ol>
+    <div class="hook">
+      <span class="h-ico">🔀</span>
+      <div><p class="h-t">Remember this</p><p class="h-b">One torch, two rooms. You sweep between them and call it "being in both".</p></div>
+    </div>
+  </div>
+</article>
+
+<!-- ===== L9 ===== -->
+<article class="lesson" id="l9" style="--accent:var(--s2); --accent-soft:var(--p-blush); --accent-ink:var(--s2)">
+  <div class="l-head">
+    <div class="kicker"><span class="badge">LESSON 09</span><span class="sv-m" style="color:var(--muted)">why any of this matters outside a lab</span></div>
+    <h3>The unicycling clown</h3>
+    <p class="q">Someone put a clown on a unicycle in the middle of a university campus and counted who noticed. The answer depends entirely on what was in people's hands.</p>
+  </div>
+
+  <div class="l-fig">
+  <svg viewBox="0 0 540 360" role="img" aria-label="Percentage noticing a unicycling clown by walking condition">
+    <text x="12" y="20" class="sv-lab">WHO SAW THE CLOWN?   HYMAN ET AL. (2010)</text>
+
+    <line x1="140" y1="46" x2="140" y2="250" stroke="var(--ink-2)" stroke-width="1.4"/>
+    <g stroke="var(--line)" stroke-width="1" stroke-dasharray="3 4">
+      <line x1="232" y1="40" x2="232" y2="250"/><line x1="324" y1="40" x2="324" y2="250"/>
+      <line x1="416" y1="40" x2="416" y2="250"/><line x1="508" y1="40" x2="508" y2="250"/>
+    </g>
+
+    <g class="sv-s" text-anchor="end" style="fill:var(--ink)">
+      <text x="130" y="72">📱 on a mobile phone</text>
+      <text x="130" y="120">🚶 walking alone</text>
+      <text x="130" y="168">🎧 listening to music</text>
+      <text x="130" y="216">👯 walking in a pair</text>
+    </g>
+    <rect x="140" y="56"  width="92"  height="24" rx="3" fill="var(--s2)"/>
+    <rect x="140" y="104" width="188" height="24" rx="3" fill="var(--muted)"/>
+    <rect x="140" y="152" width="225" height="24" rx="3" fill="var(--s1)"/>
+    <rect x="140" y="200" width="261" height="24" rx="3" fill="var(--s4)"/>
+    <text x="242" y="74"  class="sv-t" style="font-weight:700">25%</text>
+    <text x="338" y="122" class="sv-t" style="font-weight:700">51%</text>
+    <text x="375" y="170" class="sv-t" style="font-weight:700">61%</text>
+    <text x="411" y="218" class="sv-t" style="font-weight:700">71%</text>
+
+    <line x1="140" y1="250" x2="508" y2="250" stroke="var(--ink-2)" stroke-width="1.2"/>
+    <g class="sv-m" text-anchor="middle">
+      <text x="140" y="264">0</text><text x="232" y="264">25</text><text x="324" y="264">50</text>
+      <text x="416" y="264">75</text><text x="508" y="264">100%</text>
+    </g>
+
+    <rect x="12" y="284" width="252" height="64" rx="10" fill="var(--bad-bg)" stroke="var(--bad)" stroke-width="1.6"/>
+    <text x="138" y="306" text-anchor="middle" class="sv-s" style="font-weight:700; fill:var(--ink)">Phone users missed it</text>
+    <text x="138" y="324" text-anchor="middle" class="sv-s" style="font-weight:700; fill:var(--ink)">three times as often</text>
+    <text x="138" y="342" text-anchor="middle" class="sv-m">and a phone call is only SOUND</text>
+
+    <rect x="276" y="284" width="252" height="64" rx="10" fill="var(--ok-bg)" stroke="var(--ok)" stroke-width="1.6"/>
+    <text x="402" y="306" text-anchor="middle" class="sv-s" style="font-weight:700; fill:var(--ink)">People in PAIRS noticed MOST</text>
+    <text x="402" y="324" text-anchor="middle" class="sv-s">So the problem is not talking —</text>
+    <text x="402" y="342" text-anchor="middle" class="sv-s">it is talking to someone <tspan style="font-style:italic">absent</tspan>.</text>
+  </svg>
+  </div>
+
+  <div class="l-side">
+    <ol>
+      <li>A clown on a unicycle rode across a path. Only <b>25%</b> of people on the phone reported seeing it, against 51% walking alone and 61% with music.</li>
+      <li>The surprise is the last bar: people <b>walking in a pair</b> noticed <em>most</em> (71%). Talking is not the problem.</li>
+      <li>What makes a phone worse is that the partner is <b>absent</b> — holding up a conversation with someone who cannot see your situation demands more of the central pool.</li>
+      <li>The same logic applies to driving: phone conversation "decreases situation awareness and increases the chances that people will miss something important".</li>
+      <li>And the killer detail: <b>drivers do not notice how distracted they are</b>. Your judgement of your own capacity fails at the same moment your capacity does.</li>
+    </ol>
+    <div class="exam-tip">
+      <span>💡</span>
+      <div><b>Use this if asked "why are phones worse than passengers?"</b> — the pairs result answers it directly, and most students only remember the 25% figure.</div>
+    </div>
+    <div class="hook">
+      <span class="h-ico">🤡</span>
+      <div><p class="h-t">Remember this</p><p class="h-b">A conversation with someone who can see the road is cheap. One with someone who cannot is expensive.</p></div>
+    </div>
+  </div>
+</article>
+
+<h2 class="srcbar" id="partB">Part two — how the gate actually works</h2>
+
+<!-- ===== L10 ===== -->
+<article class="lesson" id="l10" style="--accent:var(--s4); --accent-soft:var(--p-sage); --accent-ink:var(--s4)">
+  <div class="l-head">
+    <div class="kicker"><span class="badge">LESSON 10</span><span class="sv-m" style="color:var(--muted)">the experiment behind every theory that follows</span></div>
+    <h3>The cocktail party, in a laboratory</h3>
+    <p class="q">Everything in Part two comes out of one simple task. Learn the task now and the four theories become easy.</p>
+  </div>
+
+  <div class="l-fig">
+  <svg viewBox="0 0 540 380" role="img" aria-label="Dichotic listening and shadowing: two messages, one to each ear, repeat only one">
+    <defs><marker id="d10" markerWidth="9" markerHeight="9" refX="7.5" refY="4.5" orient="auto">
+      <path d="M0,0 L9,4.5 L0,9 z" fill="var(--ink-2)"/></marker></defs>
+
+    <text x="12" y="20" class="sv-lab">THE REAL-LIFE PROBLEM</text>
+    <rect x="12" y="30" width="516" height="46" rx="9" fill="var(--p-cream)" stroke="var(--gold)" stroke-width="1.6"/>
+    <text x="270" y="50" text-anchor="middle" class="sv-s" style="fill:var(--ink)">You are at a party. A bore on your right is listing 110 brands of vacuum cleaner.</text>
+    <text x="270" y="68" text-anchor="middle" class="sv-s" style="fill:var(--ink)">Far better gossip is happening on your left. Somehow, you can follow the gossip.</text>
+    <text x="270" y="92" text-anchor="middle" class="sv-m" style="fill:var(--gold-deep); font-weight:700">Cherry (1953) called this THE COCKTAIL PARTY PROBLEM</text>
+
+    <line x1="12" y1="108" x2="528" y2="108" stroke="var(--line)"/>
+    <text x="12" y="132" class="sv-lab">HOW HE TURNED IT INTO AN EXPERIMENT</text>
+
+    <!-- left message -->
+    <rect x="12" y="146" width="150" height="48" rx="8" fill="var(--p-sage)" stroke="var(--s4)" stroke-width="1.8"/>
+    <text x="87" y="166" text-anchor="middle" class="sv-m" style="fill:var(--ink); font-weight:700">MESSAGE 1</text>
+    <text x="87" y="183" text-anchor="middle" class="sv-m">“in a picnic basket…”</text>
+
+    <rect x="12" y="240" width="150" height="48" rx="8" fill="var(--p-blush)" stroke="var(--s2)" stroke-width="1.8"/>
+    <text x="87" y="260" text-anchor="middle" class="sv-m" style="fill:var(--ink); font-weight:700">MESSAGE 2</text>
+    <text x="87" y="277" text-anchor="middle" class="sv-m">“the cat started to…”</text>
+
+    <!-- head with headphones -->
+    <circle cx="248" cy="217" r="42" fill="var(--paper-2)" stroke="var(--line)" stroke-width="2"/>
+    <path d="M206 217 A 42 42 0 0 1 290 217" fill="none" stroke="var(--ink-2)" stroke-width="3"/>
+    <rect x="196" y="205" width="16" height="26" rx="5" fill="var(--ink-2)"/>
+    <rect x="284" y="205" width="16" height="26" rx="5" fill="var(--ink-2)"/>
+    <text x="248" y="214" text-anchor="middle" class="sv-m">you</text>
+    <text x="248" y="230" text-anchor="middle" class="sv-m">shadowing</text>
+
+    <path d="M164 176 C 182 186, 188 198, 192 208" fill="none" stroke="var(--s4)" stroke-width="2.2" marker-end="url(#d10)"/>
+    <path d="M164 258 C 182 248, 188 238, 192 228" fill="none" stroke="var(--s2)" stroke-width="2.2" marker-end="url(#d10)"/>
+
+    <text x="178" y="150" class="sv-m" style="fill:var(--s4); font-weight:700">left ear</text>
+    <text x="178" y="300" class="sv-m" style="fill:var(--s2); font-weight:700">right ear</text>
+
+    <!-- the two named things -->
+    <rect x="318" y="146" width="210" height="64" rx="10" fill="var(--p-blue)" stroke="var(--s1)" stroke-width="1.8"/>
+    <text x="423" y="168" text-anchor="middle" class="sv-s" style="font-weight:700; fill:var(--ink)">DICHOTIC PRESENTATION</text>
+    <text x="423" y="186" text-anchor="middle" class="sv-m">different message to each ear</text>
+    <text x="423" y="202" text-anchor="middle" class="sv-m">“dichotic” = split in two</text>
+
+    <rect x="318" y="222" width="210" height="66" rx="10" fill="var(--p-lilac)" stroke="var(--s3)" stroke-width="1.8"/>
+    <text x="423" y="244" text-anchor="middle" class="sv-s" style="font-weight:700; fill:var(--ink)">SHADOWING</text>
+    <text x="423" y="262" text-anchor="middle" class="sv-m">repeat ONE message aloud,</text>
+    <text x="423" y="278" text-anchor="middle" class="sv-m">word for word, as it arrives</text>
+
+    <rect x="12" y="308" width="516" height="62" rx="10" fill="var(--ok-bg)" stroke="var(--ok)" stroke-width="1.6"/>
+    <text x="270" y="330" text-anchor="middle" class="sv-s" style="fill:var(--ink); font-weight:700">The result that started everything: people can do this.</text>
+    <text x="270" y="350" text-anchor="middle" class="sv-s" style="fill:var(--ink)">Shadowing works — though it “required a significant amount of concentration”.</text>
+    <text x="270" y="366" text-anchor="middle" class="sv-m">Now the interesting question: what happened to the OTHER ear? → lesson 11</text>
+  </svg>
+  </div>
+
+  <div class="l-side">
+    <ol>
+      <li>The real-life puzzle is the <span class="term">cocktail party problem</span> — following one conversation while others compete (Cherry, 1953).</li>
+      <li>He tested it with <span class="term">dichotic presentation</span>: a different message played to each ear. "Dichotic" just means split in two.</li>
+      <li>And <span class="term">shadowing</span>: repeat one message out loud as it arrives, like a detective shadowing a suspect. This is the <b>task</b>, not the finding.</li>
+      <li>People manage it, with effort. So selective attention <b>works</b>.</li>
+      <li>The whole of Part two is then about one question: <b>what happened to the ignored ear?</b> Every theory is an answer to that.</li>
+    </ol>
+    <div class="hook">
+      <span class="h-ico">🎧</span>
+      <div><p class="h-t">Remember this</p><p class="h-b">Two ears, two messages, repeat one. That single task generated four theories.</p></div>
+    </div>
+  </div>
+</article>
+
+<!-- ===== L11 ===== -->
+<article class="lesson" id="l11" style="--accent:var(--s1); --accent-soft:var(--p-blue); --accent-ink:var(--s1)">
+  <div class="l-head">
+    <div class="kicker"><span class="badge">LESSON 11</span><span class="sv-m" style="color:var(--muted)">the single most important pattern in Part two</span></div>
+    <h3>Sound survives. Meaning does not.</h3>
+    <p class="q">Probe the ignored ear afterwards and you find a very specific pattern. Every theory that follows exists to explain this one asymmetry.</p>
+  </div>
+
+  <div class="l-fig">
+  <svg viewBox="0 0 540 340" role="img" aria-label="What people notice in the ignored ear: physical changes yes, semantic changes no">
+    <text x="12" y="20" class="sv-lab">WE CHANGED SOMETHING IN THE EAR YOU WERE IGNORING. DID YOU NOTICE?</text>
+
+    <rect x="12" y="34" width="250" height="150" rx="11" fill="var(--ok-bg)" stroke="var(--ok)" stroke-width="2"/>
+    <text x="137" y="58" text-anchor="middle" class="sv-t" style="font-weight:700">✓ YES, NOTICED</text>
+    <text x="137" y="84"  text-anchor="middle" class="sv-s">the voice went male → female</text>
+    <text x="137" y="106" text-anchor="middle" class="sv-s">the speech became a pure tone</text>
+    <text x="137" y="128" text-anchor="middle" class="sv-s">it suddenly got much louder</text>
+    <rect x="32" y="144" width="210" height="28" rx="7" fill="var(--card)" stroke="var(--ok)" stroke-width="1.4"/>
+    <text x="137" y="162" text-anchor="middle" class="sv-s" style="fill:var(--ok); font-weight:700">all PHYSICAL properties</text>
+
+    <rect x="278" y="34" width="250" height="150" rx="11" fill="var(--bad-bg)" stroke="var(--bad)" stroke-width="2"/>
+    <text x="403" y="58" text-anchor="middle" class="sv-t" style="font-weight:700">✗ NO, MISSED</text>
+    <text x="403" y="84"  text-anchor="middle" class="sv-s">English switched to German</text>
+    <text x="403" y="106" text-anchor="middle" class="sv-s">the speech was played backwards</text>
+    <text x="403" y="128" text-anchor="middle" class="sv-s">the content became nonsense</text>
+    <rect x="298" y="144" width="210" height="28" rx="7" fill="var(--card)" stroke="var(--bad)" stroke-width="1.4"/>
+    <text x="403" y="162" text-anchor="middle" class="sv-s" style="fill:var(--bad); font-weight:700">all MEANING</text>
+
+    <rect x="12" y="200" width="516" height="72" rx="11" fill="var(--gold-soft)" stroke="var(--gold)" stroke-width="2.4"/>
+    <text x="270" y="224" text-anchor="middle" class="sv-t" style="font-weight:700">So what is the gate actually doing?</text>
+    <text x="270" y="248" text-anchor="middle" class="sv-s" style="fill:var(--ink)">It is <tspan style="font-style:italic">not</tspan> making the other ear quiet — you can still hear that it is there.</text>
+    <text x="270" y="266" text-anchor="middle" class="sv-s" style="fill:var(--ink)">It is stopping the other ear from being <tspan style="font-weight:700">turned into meaning.</tspan></text>
+
+    <rect x="12" y="288" width="516" height="42" rx="9" fill="var(--p-blue)" stroke="var(--s1)" stroke-width="1.4"/>
+    <text x="270" y="308" text-anchor="middle" class="sv-s" style="fill:var(--ink)">Simons calls this <tspan style="font-weight:700">“cognitive deafness”</tspan> — a limit of the mind, not of the ear.</text>
+    <text x="270" y="324" text-anchor="middle" class="sv-m">Hold on to this asymmetry. Lessons 13–16 are four attempts to explain it.</text>
+  </svg>
+  </div>
+
+  <div class="l-side">
+    <ol>
+      <li>Change something <b>physical</b> in the ignored ear — a male voice becoming female, speech becoming a tone — and people notice.</li>
+      <li>Change the <b>meaning</b> — English to German, speech reversed, content turned to nonsense — and they do not.</li>
+      <li>So the ignored ear is not switched off. Its <b>sound</b> is still being registered; only its <b>sense</b> is not.</li>
+      <li>Simons's phrase for it is <b>cognitive deafness</b>: your ear is working perfectly, your mind has simply stopped decoding that channel.</li>
+      <li>Every theory in the next four lessons is an attempt to say <em>where</em> in the pipeline this happens, and <em>how</em>.</li>
+    </ol>
+    <div class="hook">
+      <span class="h-ico">🔇</span>
+      <div><p class="h-t">Remember this</p><p class="h-b">You keep the noise and lose the news.</p></div>
+    </div>
+  </div>
+</article>
+
+<!-- ===== L12 ===== -->
+<article class="lesson" id="l12" style="--accent:var(--s2); --accent-soft:var(--p-blush); --accent-ink:var(--s2)">
+  <div class="l-head">
+    <div class="kicker"><span class="badge">LESSON 12</span><span class="sv-m" style="color:var(--muted)">the exception that broke the first theory</span></div>
+    <h3>Except your own name</h3>
+    <p class="q">One word gets through the gate when nothing else does. And the people it gets through for are not the ones you would guess.</p>
+  </div>
+
+  <div class="l-fig">
+  <svg viewBox="0 0 540 380" role="img" aria-label="Your own name bursts through the filter, and low-span people notice it more often">
+    <text x="12" y="20" class="sv-lab">ONE WORD PUNCHES THROUGH</text>
+
+    <!-- filter wall -->
+    <rect x="196" y="34" width="30" height="130" fill="var(--ink-2)" opacity=".2"/>
+    <rect x="196" y="34" width="30" height="130" fill="none" stroke="var(--ink-2)" stroke-width="1.6"/>
+    <text x="211" y="182" text-anchor="middle" class="sv-m">the filter</text>
+
+    <g class="sv-m" text-anchor="end" style="fill:var(--muted)">
+      <text x="186" y="56">“…vacuum cleaner…”</text>
+      <text x="186" y="84">“…on Tuesday…”</text>
+      <text x="186" y="140">“…terribly expensive…”</text>
+      <text x="186" y="160">“…in the garden…”</text>
+    </g>
+    <g stroke="var(--muted)" stroke-width="1.4" stroke-dasharray="3 3">
+      <line x1="190" y1="52" x2="196" y2="52"/><line x1="190" y1="80" x2="196" y2="80"/>
+      <line x1="190" y1="136" x2="196" y2="136"/><line x1="190" y1="156" x2="196" y2="156"/>
+    </g>
+    <text x="210" y="106" text-anchor="middle" class="sv-h" style="font-size:20px; fill:var(--bad)">✗</text>
+
+    <!-- the name bursting through -->
+    <rect x="60" y="96" width="124" height="30" rx="7" fill="var(--gold-soft)" stroke="var(--gold-deep)" stroke-width="2.2"/>
+    <text x="122" y="116" text-anchor="middle" class="sv-s" style="fill:var(--ink); font-weight:700">“…Sezen…”</text>
+    <path d="M188 111 L 250 111" stroke="var(--gold-deep)" stroke-width="3.4"/>
+    <polygon points="250,104 264,111 250,118" fill="var(--gold-deep)"/>
+    <text x="272" y="106" class="sv-s" style="fill:var(--ink); font-weight:700">gets through</text>
+    <text x="272" y="124" class="sv-m">about 1 person in 3</text>
+
+    <line x1="12" y1="198" x2="528" y2="198" stroke="var(--line)"/>
+    <text x="12" y="222" class="sv-lab">BUT WHICH PEOPLE?  CONWAY, COWAN &amp; BUNTING (2001)</text>
+
+    <line x1="132" y1="240" x2="132" y2="318" stroke="var(--ink-2)" stroke-width="1.4"/>
+    <g class="sv-s" text-anchor="end" style="fill:var(--ink)">
+      <text x="124" y="264">LOW memory span</text>
+      <text x="124" y="302">HIGH memory span</text>
+    </g>
+    <rect x="132" y="248" width="234" height="22" rx="3" fill="var(--s2)"/>
+    <rect x="132" y="286" width="72"  height="22" rx="3" fill="var(--s4)"/>
+    <text x="376" y="266" class="sv-t" style="font-weight:700">65%</text>
+    <text x="214" y="304" class="sv-t" style="font-weight:700">20%</text>
+    <line x1="132" y1="318" x2="492" y2="318" stroke="var(--ink-2)" stroke-width="1.2"/>
+    <text x="312" y="332" text-anchor="middle" class="sv-m">% who heard their own name in the ignored ear</text>
+
+    <rect x="12" y="344" width="516" height="30" rx="8" fill="var(--bad-bg)" stroke="var(--bad)" stroke-width="1.6"/>
+    <text x="270" y="364" text-anchor="middle" class="sv-s" style="fill:var(--ink)">So hearing your name across a room is a sign of a <tspan style="font-weight:700">leaky filter</tspan>, not a sharp one.</text>
+  </svg>
+  </div>
+
+  <div class="l-side">
+    <ol>
+      <li>Ordinary words in the ignored ear go nowhere. Your <b>own name</b> gets through for about <b>one person in three</b> (Moray, 1959).</li>
+      <li>Why? It is enormously overlearned and personally loaded. It is the one piece of content strong enough to force the gate.</li>
+      <li>Now the twist. The people who catch it have <b>lower</b> memory span: <b>65%</b> of low-span people heard it, against only <b>20%</b> of high-span people.</li>
+      <li>The authors' explanation: high-span people are simply <b>better at blocking</b> the irrelevant message. Their filter holds.</li>
+      <li>So noticing your name is a <b>failure</b> of selective attention that happens to be useful — not a sign that your attention is sharp.</li>
+    </ol>
+    <div class="exam-tip">
+      <span>⚠️</span>
+      <div><b>Be careful here.</b> A preregistered replication (Röer &amp; Cowan, 2021) reproduced the name effect but found <b>no reliable link to memory span</b>. Say the effect is solid and the individual-difference part is contested.</div>
+    </div>
+    <div class="hook">
+      <span class="h-ico">📣</span>
+      <div><p class="h-t">Remember this</p><p class="h-b">Your name is the one word loud enough to break a window. Some windows are just thinner.</p></div>
+    </div>
+  </div>
+</article>
+
+<!-- ===== L13 ===== -->
+<article class="lesson" id="l13" style="--accent:var(--s1); --accent-soft:var(--p-blue); --accent-ink:var(--s1)">
+  <div class="l-head">
+    <div class="kicker"><span class="badge">LESSON 13</span><span class="sv-m" style="color:var(--muted)">theory 1 of 4</span></div>
+    <h3>Broadbent: a shutter, early</h3>
+    <p class="q">The first attempt. One channel gets in, chosen by how it sounds, and everything else stops at the door.</p>
+  </div>
+
+  <div class="l-fig">
+  <svg viewBox="0 0 540 330" role="img" aria-label="Broadbent's early filter: one channel passes, the other is blocked before perception">
+    <defs><marker id="b13" markerWidth="8" markerHeight="8" refX="6.5" refY="4" orient="auto">
+      <path d="M0,0 L8,4 L0,8 z" fill="var(--ink-2)"/></marker></defs>
+
+    <text x="12" y="20" class="sv-lab">BROADBENT (1958) · PERCEPTION AND COMMUNICATION</text>
+
+    <text x="12" y="70" class="sv-m" style="fill:var(--ink); font-weight:700">attended</text>
+    <text x="12" y="128" class="sv-m" style="fill:var(--muted)">ignored</text>
+    <path d="M70 66 L 96 78" stroke="var(--ink-2)" stroke-width="1.8" marker-end="url(#b13)"/>
+    <path d="M64 124 L 96 108" stroke="var(--muted)" stroke-width="1.8" stroke-dasharray="3 3" marker-end="url(#b13)"/>
+
+    <rect x="100" y="66" width="80" height="54" rx="8" fill="var(--card)" stroke="var(--line)" stroke-width="1.4"/>
+    <text x="140" y="88"  text-anchor="middle" class="sv-m">Sensory</text>
+    <text x="140" y="104" text-anchor="middle" class="sv-m">register</text>
+
+    <!-- the shutter -->
+    <rect x="196" y="56" width="76" height="74" rx="8" fill="var(--bad-bg)" stroke="var(--s1)" stroke-width="3"/>
+    <text x="234" y="82"  text-anchor="middle" class="sv-m" style="fill:var(--ink); font-weight:700">FILTER</text>
+    <text x="234" y="98"  text-anchor="middle" class="sv-m" style="fill:var(--ink); font-weight:700">(shut)</text>
+    <text x="234" y="118" text-anchor="middle" class="sv-h" style="font-size:16px">🚪</text>
+
+    <path d="M180 84 L 192 84" stroke="var(--ink-2)" stroke-width="1.8" marker-end="url(#b13)"/>
+    <path d="M180 106 L 192 106" stroke="var(--bad)" stroke-width="1.8"/>
+    <line x1="184" y1="100" x2="190" y2="112" stroke="var(--bad)" stroke-width="2"/>
+    <line x1="190" y1="100" x2="184" y2="112" stroke="var(--bad)" stroke-width="2"/>
+
+    <path d="M274 92 L 290 92" stroke="var(--ink-2)" stroke-width="1.8" marker-end="url(#b13)"/>
+
+    <rect x="294" y="66" width="84" height="54" rx="8" fill="var(--card)" stroke="var(--line)" stroke-width="1.4"/>
+    <text x="336" y="88"  text-anchor="middle" class="sv-m">Perceptual</text>
+    <text x="336" y="104" text-anchor="middle" class="sv-m">processes</text>
+    <text x="336" y="138" text-anchor="middle" class="sv-m" style="fill:var(--gold-deep)">meaning starts HERE</text>
+
+    <path d="M380 92 L 396 92" stroke="var(--ink-2)" stroke-width="1.8" marker-end="url(#b13)"/>
+    <rect x="400" y="66" width="82" height="54" rx="8" fill="var(--card)" stroke="var(--line)" stroke-width="1.4"/>
+    <text x="441" y="88"  text-anchor="middle" class="sv-m">Short-term</text>
+    <text x="441" y="104" text-anchor="middle" class="sv-m">memory</text>
+    <path d="M484 92 L 500 92" stroke="var(--ink-2)" stroke-width="1.8" marker-end="url(#b13)"/>
+    <text x="512" y="96" class="sv-m">→</text>
+
+    <rect x="12" y="164" width="252" height="72" rx="10" fill="var(--p-blue)" stroke="var(--s1)" stroke-width="1.6"/>
+    <text x="138" y="186" text-anchor="middle" class="sv-s" style="font-weight:700; fill:var(--ink)">How does it choose?</text>
+    <text x="138" y="206" text-anchor="middle" class="sv-m">By physical features only —</text>
+    <text x="138" y="222" text-anchor="middle" class="sv-m">“loudness, pitch, or accent”</text>
+
+    <rect x="278" y="164" width="250" height="72" rx="10" fill="var(--ok-bg)" stroke="var(--ok)" stroke-width="1.6"/>
+    <text x="403" y="186" text-anchor="middle" class="sv-s" style="font-weight:700; fill:var(--ink)">Why it looked right</text>
+    <text x="403" y="206" text-anchor="middle" class="sv-m">A tone IS noticed — physical, and</text>
+    <text x="403" y="222" text-anchor="middle" class="sv-m">the filter sits after the senses.</text>
+
+    <rect x="12" y="250" width="516" height="68" rx="10" fill="var(--bad-bg)" stroke="var(--bad)" stroke-width="1.8"/>
+    <text x="270" y="272" text-anchor="middle" class="sv-s" style="font-weight:700; fill:var(--ink)">…and why it could not last</text>
+    <text x="270" y="292" text-anchor="middle" class="sv-s" style="fill:var(--ink)">If the ignored channel never reaches meaning, <tspan style="font-weight:700">your own name could never get through.</tspan></text>
+    <text x="270" y="310" text-anchor="middle" class="sv-s" style="fill:var(--ink)">But it does (lesson 12). So something is wrong. → lesson 14</text>
+  </svg>
+  </div>
+
+  <div class="l-side">
+    <ol>
+      <li>Broadbent's picture is a <b>pipeline</b>: senses → filter → perception → short-term memory → response. Learn the pipeline; all four theories reuse it.</li>
+      <li>The filter sits <b>early</b>, right after the senses and <b>before</b> anything is understood.</li>
+      <li>It chooses on <b>physical features alone</b> — loudness, pitch, accent. It lets exactly <b>one channel</b> through; the rest "may never reach the level of perception".</li>
+      <li>This explains lesson 11 beautifully: a tone is a physical change and gets noticed; English→German needs meaning, and meaning is behind the filter.</li>
+      <li>It is killed by one result: your own name (lesson 12). A shut door cannot let a name through.</li>
+    </ol>
+    <div class="hook">
+      <span class="h-ico">🚪</span>
+      <div><p class="h-t">Remember this</p><p class="h-b">A bouncer who checks how you look, lets one group in, and never learns anyone's name.</p></div>
+    </div>
+  </div>
+</article>
+
+<!-- ===== L14 ===== -->
+<article class="lesson" id="l14" style="--accent:var(--s4); --accent-soft:var(--p-sage); --accent-ink:var(--s4)">
+  <div class="l-head">
+    <div class="kicker"><span class="badge">LESSON 14</span><span class="sv-m" style="color:var(--muted)">theory 2 of 4 — and why it was not enough</span></div>
+    <h3>Moray: the same shutter, but leaky</h3>
+    <p class="q">The minimum possible repair. Keep Broadbent's door exactly where it is, and punch a small hole in it.</p>
+  </div>
+
+  <div class="l-fig">
+  <svg viewBox="0 0 540 340" role="img" aria-label="Moray's leaky filter and the three Treisman results that broke it">
+    <text x="12" y="20" class="sv-lab">MORAY (1959) · THE SELECTIVE FILTER MODEL</text>
+
+    <rect x="12" y="32" width="516" height="86" rx="11" fill="var(--p-sage)" stroke="var(--s4)" stroke-width="1.8"/>
+    <rect x="30" y="48" width="76" height="54" rx="8" fill="var(--card)" stroke="var(--line)" stroke-width="1.4"/>
+    <text x="68" y="70"  text-anchor="middle" class="sv-m">Sensory</text>
+    <text x="68" y="86"  text-anchor="middle" class="sv-m">register</text>
+    <rect x="122" y="44" width="80" height="62" rx="8" fill="var(--ok-bg)" stroke="var(--s4)" stroke-width="2.6" stroke-dasharray="7 3"/>
+    <text x="162" y="70"  text-anchor="middle" class="sv-m" style="fill:var(--ink); font-weight:700">FILTER</text>
+    <text x="162" y="86"  text-anchor="middle" class="sv-m" style="fill:var(--ink); font-weight:700">(leaky)</text>
+    <text x="222" y="66"  class="sv-s" style="fill:var(--ink)">Same position. Same architecture.</text>
+    <text x="222" y="86"  class="sv-s" style="fill:var(--ink)">But <tspan style="font-weight:700">important messages “burst through”</tspan> — your name.</text>
+    <text x="222" y="104" class="sv-m">It is a patch, not a redesign.</text>
+
+    <text x="12" y="144" class="sv-lab" style="fill:var(--bad)">THEN TREISMAN RAN THREE STUDIES THE PATCH COULD NOT SURVIVE</text>
+
+    <rect x="12" y="156" width="166" height="122" rx="10" fill="var(--card)" stroke="var(--bad)" stroke-width="1.6"/>
+    <text x="95" y="178" text-anchor="middle" class="sv-m" style="fill:var(--ink); font-weight:700">1 · THE SWITCH</text>
+    <text x="95" y="200" text-anchor="middle" class="sv-s">She moved the rest of</text>
+    <text x="95" y="216" text-anchor="middle" class="sv-s">your sentence to the</text>
+    <text x="95" y="232" text-anchor="middle" class="sv-s">ignored ear mid-flow.</text>
+    <text x="95" y="256" text-anchor="middle" class="sv-m" style="fill:var(--bad); font-weight:700">People followed it</text>
+    <text x="95" y="270" text-anchor="middle" class="sv-m" style="fill:var(--bad); font-weight:700">for a word or two.</text>
+
+    <rect x="188" y="156" width="166" height="122" rx="10" fill="var(--card)" stroke="var(--bad)" stroke-width="1.6"/>
+    <text x="271" y="178" text-anchor="middle" class="sv-m" style="fill:var(--ink); font-weight:700">2 · THE TWIN</text>
+    <text x="271" y="200" text-anchor="middle" class="sv-s">Both ears got the</text>
+    <text x="271" y="216" text-anchor="middle" class="sv-s">identical message, even</text>
+    <text x="271" y="232" text-anchor="middle" class="sv-s">slightly out of sync.</text>
+    <text x="271" y="256" text-anchor="middle" class="sv-m" style="fill:var(--bad); font-weight:700">EVERYONE spotted</text>
+    <text x="271" y="270" text-anchor="middle" class="sv-m" style="fill:var(--bad); font-weight:700">the match.</text>
+
+    <rect x="364" y="156" width="164" height="122" rx="10" fill="var(--card)" stroke="var(--bad)" stroke-width="1.6"/>
+    <text x="446" y="178" text-anchor="middle" class="sv-m" style="fill:var(--ink); font-weight:700">3 · THE TRANSLATION</text>
+    <text x="446" y="200" text-anchor="middle" class="sv-s">Bilinguals got a</text>
+    <text x="446" y="216" text-anchor="middle" class="sv-s">translation of the</text>
+    <text x="446" y="232" text-anchor="middle" class="sv-s">attended message.</text>
+    <text x="446" y="256" text-anchor="middle" class="sv-m" style="fill:var(--bad); font-weight:700">Some noticed they</text>
+    <text x="446" y="270" text-anchor="middle" class="sv-m" style="fill:var(--bad); font-weight:700">were the same.</text>
+
+    <rect x="12" y="292" width="516" height="40" rx="9" fill="var(--gold-soft)" stroke="var(--gold)" stroke-width="1.8"/>
+    <text x="270" y="310" text-anchor="middle" class="sv-s" style="fill:var(--ink)">Number 3 is the killer: two messages that <tspan style="font-weight:700">sound nothing alike</tspan> can only be matched by MEANING.</text>
+    <text x="270" y="326" text-anchor="middle" class="sv-s" style="fill:var(--ink)">A hole for special words cannot do that. You need a different kind of gate. → lesson 15</text>
+  </svg>
+  </div>
+
+  <div class="l-side">
+    <ol>
+      <li>Moray keeps Broadbent's filter in the <b>same place</b> and just makes it permeable: "some personally important messages are so powerful that they burst through".</li>
+      <li>That handles single special words like your name. It handles nothing else.</li>
+      <li><b>Treisman's switch study:</b> she moved the rest of a sentence into the ignored ear, and people carried on into the wrong ear for a word or two. You can only do that if you were tracking the <b>meaning</b>.</li>
+      <li><b>The twin study:</b> everyone spotted it when both ears carried the same message — a filter passing only one channel could never detect a match.</li>
+      <li><b>The translation study:</b> bilinguals noticed when the ignored ear was a <em>translation</em>. Two messages with nothing acoustic in common can only be matched at the level of meaning. That is fatal.</li>
+    </ol>
+    <div class="hook">
+      <span class="h-ico">🩹</span>
+      <div><p class="h-t">Remember this</p><p class="h-b">A hole in the door lets one name through. It cannot let a whole translation through.</p></div>
+    </div>
+  </div>
+</article>
+
+<!-- ===== L15 ===== -->
+<article class="lesson" id="l15" style="--accent:var(--gold-deep); --accent-soft:var(--warn-bg); --accent-ink:var(--gold-deep)">
+  <div class="l-head">
+    <div class="kicker"><span class="badge">LESSON 15</span><span class="sv-m" style="color:var(--muted)">theory 3 of 4 — the one that lasted</span></div>
+    <h3>Treisman: a volume knob, not a shutter</h3>
+    <p class="q">Her move is the most important idea in Part two. Stop asking <em>whether</em> the other channel is processed and start asking <em>how much</em>.</p>
+  </div>
+
+  <div class="l-fig">
+  <svg viewBox="0 0 540 370" role="img" aria-label="Treisman's attenuation model: the ignored channel is turned down, not switched off, then analysed for meaning">
+    <defs>
+      <marker id="t15" markerWidth="8" markerHeight="8" refX="6.5" refY="4" orient="auto">
+        <path d="M0,0 L8,4 L0,8 z" fill="var(--ink-2)"/></marker>
+      <marker id="t15f" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+        <path d="M0,0 L7,3.5 L0,7 z" fill="var(--muted)"/></marker>
+    </defs>
+
+    <text x="12" y="20" class="sv-lab">TREISMAN (1960) · THE ATTENUATION MODEL</text>
+
+    <!-- inputs -->
+    <text x="12" y="80" class="sv-m" style="fill:var(--ink); font-weight:700">attended</text>
+    <text x="12" y="146" class="sv-m" style="fill:var(--muted)">ignored</text>
+    <path d="M72 76 L 108 88" stroke="var(--ink-2)" stroke-width="2.6" marker-end="url(#t15)"/>
+    <path d="M64 142 L 108 122" stroke="var(--muted)" stroke-width="2.6" marker-end="url(#t15)"/>
+
+    <!-- the knob -->
+    <rect x="112" y="62" width="106" height="88" rx="10" fill="var(--warn-bg)" stroke="var(--gold-deep)" stroke-width="3"/>
+    <text x="165" y="86"  text-anchor="middle" class="sv-m" style="fill:var(--ink); font-weight:700">ATTENUATION</text>
+    <text x="165" y="101" text-anchor="middle" class="sv-m" style="fill:var(--ink); font-weight:700">CONTROL</text>
+    <circle cx="165" cy="126" r="15" fill="var(--card)" stroke="var(--gold-deep)" stroke-width="2"/>
+    <line x1="165" y1="126" x2="175" y2="117" stroke="var(--gold-deep)" stroke-width="2.4"/>
+    <text x="165" y="164" text-anchor="middle" class="sv-m" style="fill:var(--gold-deep)">limited capacity</text>
+
+    <!-- outputs: full and weak -->
+    <path d="M222 84 L 292 84" stroke="var(--ink-2)" stroke-width="3" marker-end="url(#t15)"/>
+    <text x="255" y="76" text-anchor="middle" class="sv-m" style="fill:var(--ink); font-weight:700">FULL</text>
+    <path d="M222 128 L 292 128" stroke="var(--muted)" stroke-width="1" stroke-dasharray="2 3" marker-end="url(#t15f)"/>
+    <text x="255" y="144" text-anchor="middle" class="sv-m" style="fill:var(--muted)">WEAK</text>
+
+    <rect x="298" y="62" width="92" height="88" rx="10" fill="var(--card)" stroke="var(--line)" stroke-width="1.4"/>
+    <text x="344" y="96"  text-anchor="middle" class="sv-m">Perceptual</text>
+    <text x="344" y="112" text-anchor="middle" class="sv-m">processes</text>
+    <text x="344" y="132" text-anchor="middle" class="sv-m" style="fill:var(--gold-deep)">meaning</text>
+
+    <path d="M392 106 L 408 106" stroke="var(--ink-2)" stroke-width="1.8" marker-end="url(#t15)"/>
+    <rect x="412" y="76" width="86" height="60" rx="9" fill="var(--card)" stroke="var(--line)" stroke-width="1.4"/>
+    <text x="455" y="100" text-anchor="middle" class="sv-m">Short-term</text>
+    <text x="455" y="116" text-anchor="middle" class="sv-m">memory</text>
+    <path d="M500 106 L 516 106" stroke="var(--ink-2)" stroke-width="1.8" marker-end="url(#t15)"/>
+
+    <text x="12" y="178" class="sv-m">solid = full strength  ·  dotted = weakened, but still analysed for meaning</text>
+
+    <line x1="12" y1="192" x2="528" y2="192" stroke="var(--line)"/>
+    <text x="12" y="214" class="sv-lab">WHY A KNOB SOLVES WHAT A DOOR COULD NOT</text>
+
+    <rect x="12" y="226" width="252" height="86" rx="10" fill="var(--ok-bg)" stroke="var(--ok)" stroke-width="1.6"/>
+    <text x="138" y="248" text-anchor="middle" class="sv-s" style="font-weight:700; fill:var(--ink)">Nothing is blocked</text>
+    <text x="138" y="268" text-anchor="middle" class="sv-s">So the ignored channel still</text>
+    <text x="138" y="284" text-anchor="middle" class="sv-s">reaches the meaning stage —</text>
+    <text x="138" y="300" text-anchor="middle" class="sv-s">just faintly.</text>
+
+    <rect x="278" y="226" width="250" height="86" rx="10" fill="var(--p-blue)" stroke="var(--s1)" stroke-width="1.6"/>
+    <text x="403" y="248" text-anchor="middle" class="sv-s" style="font-weight:700; fill:var(--ink)">So a faint signal can surface</text>
+    <text x="403" y="268" text-anchor="middle" class="sv-s">…if it matters enough: your name,</text>
+    <text x="403" y="284" text-anchor="middle" class="sv-s">a matching message, a translation.</text>
+    <text x="403" y="300" text-anchor="middle" class="sv-s" style="font-weight:700">All three results, one mechanism.</text>
+
+    <rect x="12" y="326" width="516" height="40" rx="9" fill="var(--gold-soft)" stroke="var(--gold)" stroke-width="1.8"/>
+    <text x="270" y="344" text-anchor="middle" class="sv-s" style="fill:var(--ink)">The big conceptual shift: <tspan style="font-weight:700">DEGREE of processing</tspan> replaces <tspan style="font-weight:700">WHETHER processing happens.</tspan></text>
+    <text x="270" y="360" text-anchor="middle" class="sv-m">If you learn one sentence from Part two, learn that one.</text>
+  </svg>
+  </div>
+
+  <div class="l-side">
+    <ol>
+      <li>Treisman replaces the shutter with a <b>volume knob</b>: "instead of blocking stimuli out, the filter merely <b>weakens (attenuates)</b>" everything that is not the target.</li>
+      <li>The order matters. First a cheap check for <b>target properties</b> (loudness, pitch). Signals that pass go on at full strength; everything else goes on <b>weakened</b>.</li>
+      <li>Then <b>meaning</b> is analysed — for both channels. So the ignored channel does get understood, faintly.</li>
+      <li>That single change explains all three of her results at once: a faint signal can still surface if it is important enough.</li>
+      <li>The conceptual leap: she stops asking <em>whether</em> the unattended channel is processed and asks <b>how much</b>. Degree, not all-or-nothing.</li>
+    </ol>
+    <div class="hook">
+      <span class="h-ico">🔊</span>
+      <div><p class="h-t">Remember this</p><p class="h-b">Everyone gets into the club. The people not on the list just arrive muffled.</p></div>
+    </div>
+  </div>
+</article>
+
+<!-- ===== L16 ===== -->
+<article class="lesson" id="l16" style="--accent:var(--s3); --accent-soft:var(--p-lilac); --accent-ink:var(--s3)">
+  <div class="l-head">
+    <div class="kicker"><span class="badge">LESSON 16</span><span class="sv-m" style="color:var(--muted)">theory 4 of 4</span></div>
+    <h3>Deutsch &amp; Deutsch: move the door to the end</h3>
+    <p class="q">A more radical answer. Do not weaken anything — understand everything, and only then decide what reaches you.</p>
+  </div>
+
+  <div class="l-fig">
+  <svg viewBox="0 0 540 340" role="img" aria-label="Deutsch and Deutsch's late filter: everything is analysed for meaning first, then one stream is selected">
+    <defs><marker id="x16" markerWidth="8" markerHeight="8" refX="6.5" refY="4" orient="auto">
+      <path d="M0,0 L8,4 L0,8 z" fill="var(--ink-2)"/></marker></defs>
+
+    <text x="12" y="20" class="sv-lab">DEUTSCH &amp; DEUTSCH (1963) · NORMAN (1968) · THE LATE FILTER</text>
+
+    <text x="12" y="76"  class="sv-m" style="fill:var(--ink); font-weight:700">attended</text>
+    <text x="12" y="122" class="sv-m" style="fill:var(--ink); font-weight:700">ignored</text>
+    <path d="M72 72 L 100 84" stroke="var(--ink-2)" stroke-width="2.6" marker-end="url(#x16)"/>
+    <path d="M66 118 L 100 106" stroke="var(--ink-2)" stroke-width="2.6" marker-end="url(#x16)"/>
+    <text x="42" y="142" class="sv-m" style="fill:var(--s3)">both solid now —</text>
+    <text x="42" y="156" class="sv-m" style="fill:var(--s3)">nothing is degraded</text>
+
+    <rect x="104" y="66" width="80" height="58" rx="8" fill="var(--card)" stroke="var(--line)" stroke-width="1.4"/>
+    <text x="144" y="90"  text-anchor="middle" class="sv-m">Sensory</text>
+    <text x="144" y="106" text-anchor="middle" class="sv-m">register</text>
+    <path d="M186 95 L 200 95" stroke="var(--ink-2)" stroke-width="1.8" marker-end="url(#x16)"/>
+
+    <rect x="204" y="66" width="96" height="58" rx="8" fill="var(--p-sage)" stroke="var(--s4)" stroke-width="1.8"/>
+    <text x="252" y="86"  text-anchor="middle" class="sv-m" style="fill:var(--ink); font-weight:700">Perceptual</text>
+    <text x="252" y="102" text-anchor="middle" class="sv-m" style="fill:var(--ink); font-weight:700">processes</text>
+    <text x="252" y="118" text-anchor="middle" class="sv-m" style="fill:var(--s4)">BOTH decoded</text>
+    <path d="M302 95 L 316 95" stroke="var(--ink-2)" stroke-width="1.8" marker-end="url(#x16)"/>
+
+    <rect x="320" y="60" width="84" height="70" rx="8" fill="var(--p-lilac)" stroke="var(--s3)" stroke-width="3"/>
+    <text x="362" y="88"  text-anchor="middle" class="sv-m" style="fill:var(--ink); font-weight:700">FILTER</text>
+    <text x="362" y="104" text-anchor="middle" class="sv-m" style="fill:var(--ink); font-weight:700">now HERE</text>
+    <text x="362" y="122" text-anchor="middle" class="sv-h" style="font-size:14px">🚪</text>
+    <path d="M406 95 L 420 95" stroke="var(--ink-2)" stroke-width="1.8" marker-end="url(#x16)"/>
+
+    <rect x="424" y="66" width="82" height="58" rx="8" fill="var(--card)" stroke="var(--line)" stroke-width="1.4"/>
+    <text x="465" y="90"  text-anchor="middle" class="sv-m">Short-term</text>
+    <text x="465" y="106" text-anchor="middle" class="sv-m">memory</text>
+    <text x="518" y="99" class="sv-m">→</text>
+
+    <line x1="12" y1="180" x2="528" y2="180" stroke="var(--line)"/>
+
+    <rect x="12" y="196" width="252" height="80" rx="10" fill="var(--ok-bg)" stroke="var(--ok)" stroke-width="1.6"/>
+    <text x="138" y="218" text-anchor="middle" class="sv-s" style="font-weight:700; fill:var(--ink)">What it gets for free</text>
+    <text x="138" y="238" text-anchor="middle" class="sv-s">Your name. The twin message.</text>
+    <text x="138" y="254" text-anchor="middle" class="sv-s">The translation. All of it —</text>
+    <text x="138" y="270" text-anchor="middle" class="sv-s">because everything was understood.</text>
+
+    <rect x="278" y="196" width="250" height="80" rx="10" fill="var(--warn-bg)" stroke="var(--warn)" stroke-width="1.6"/>
+    <text x="403" y="218" text-anchor="middle" class="sv-s" style="font-weight:700; fill:var(--ink)">What it costs</text>
+    <text x="403" y="238" text-anchor="middle" class="sv-s">You must fully analyse everything</text>
+    <text x="403" y="254" text-anchor="middle" class="sv-s">you will then throw away —</text>
+    <text x="403" y="270" text-anchor="middle" class="sv-s">which is enormously wasteful.</text>
+
+    <rect x="12" y="290" width="516" height="42" rx="9" fill="var(--gold-soft)" stroke="var(--gold)" stroke-width="1.8"/>
+    <text x="270" y="309" text-anchor="middle" class="sv-s" style="fill:var(--ink)">Notice what it shares with Broadbent: <tspan style="font-weight:700">one bottleneck, one stream through it.</tspan></text>
+    <text x="270" y="326" text-anchor="middle" class="sv-s" style="fill:var(--ink)">The two models “differ only in terms of <tspan style="font-style:italic">where</tspan> they hypothesize the bottleneck to be positioned”.</text>
+  </svg>
+  </div>
+
+  <div class="l-side">
+    <ol>
+      <li>Same pipeline, but the filter has <b>moved to the end</b>. Stimuli are filtered out "only after they have been analysed for <b>both their physical properties and their meaning</b>".</li>
+      <li>Look at the input arrows: <b>both are solid</b>. Nothing is blocked and nothing is weakened on the way in.</li>
+      <li>This gets the name effect, the twin message and the translation <b>for free</b> — by the time selection happens, everything has already been understood.</li>
+      <li>The price is efficiency. You do the expensive work of understanding material you are about to discard.</li>
+      <li>Crucially, it is <b>the same family</b> as Broadbent: one bottleneck, one stream. The argument is only about <em>where</em> the bottleneck sits.</li>
+    </ol>
+    <div class="hook">
+      <span class="h-ico">🏢</span>
+      <div><p class="h-t">Remember this</p><p class="h-b">The door moved to the far end of the corridor. Everyone walks in; one person gets to speak to you.</p></div>
+    </div>
+  </div>
+</article>
+
+<!-- ===== L17 ===== -->
+<article class="lesson" id="l17" style="--accent:var(--gold-deep); --accent-soft:var(--gold-soft); --accent-ink:var(--gold-deep)">
+  <div class="l-head">
+    <div class="kicker"><span class="badge">LESSON 17</span><span class="sv-m" style="color:var(--muted)">objectives B4 and B5, in one picture</span></div>
+    <h3>All four, side by side</h3>
+    <p class="q">Two questions separate every theory in this topic. Answer them and you have named any of the four.</p>
+  </div>
+
+  <div class="l-fig">
+  <svg viewBox="0 0 540 420" role="img" aria-label="All four theories placed by where the gate sits and what the gate does">
+    <text x="270" y="20" text-anchor="middle" class="sv-lab">QUESTION 1 — WHERE IS THE GATE?</text>
+    <text x="196" y="42" text-anchor="middle" class="sv-s" style="font-weight:700; fill:var(--s4)">EARLY (before meaning)</text>
+    <text x="432" y="42" text-anchor="middle" class="sv-s" style="font-weight:700; fill:var(--s3)">LATE (after)</text>
+    <text x="-224" y="18" transform="rotate(-90)" text-anchor="middle" class="sv-lab">QUESTION 2 — WHAT DOES IT DO?</text>
+
+    <text x="64" y="86"  text-anchor="middle" class="sv-s" style="font-weight:700; fill:var(--ink)">BLOCKS</text>
+    <text x="64" y="102" text-anchor="middle" class="sv-m">completely</text>
+    <text x="64" y="196" text-anchor="middle" class="sv-s" style="font-weight:700; fill:var(--ink)">BLOCKS</text>
+    <text x="64" y="212" text-anchor="middle" class="sv-m">but leaks</text>
+    <text x="64" y="306" text-anchor="middle" class="sv-s" style="font-weight:700; fill:var(--ink)">WEAKENS</text>
+    <text x="64" y="322" text-anchor="middle" class="sv-m">no block</text>
+
+    <rect x="102" y="54" width="188" height="78" rx="10" fill="var(--p-blue)" stroke="var(--s1)" stroke-width="2"/>
+    <text x="196" y="76"  text-anchor="middle" class="sv-s" style="font-weight:700; fill:var(--ink)">BROADBENT 1958</text>
+    <text x="196" y="96"  text-anchor="middle" class="sv-m">one channel, on pitch</text>
+    <text x="196" y="112" text-anchor="middle" class="sv-m">and loudness</text>
+    <text x="196" y="126" text-anchor="middle" class="sv-m" style="fill:var(--s1)">broken by: your name</text>
+
+    <rect x="102" y="164" width="188" height="78" rx="10" fill="var(--p-sage)" stroke="var(--s4)" stroke-width="2"/>
+    <text x="196" y="186" text-anchor="middle" class="sv-s" style="font-weight:700; fill:var(--ink)">MORAY 1959</text>
+    <text x="196" y="206" text-anchor="middle" class="sv-m">important words burst</text>
+    <text x="196" y="222" text-anchor="middle" class="sv-m">through the same door</text>
+    <text x="196" y="236" text-anchor="middle" class="sv-m" style="fill:var(--s4)">broken by: translations</text>
+
+    <rect x="102" y="274" width="188" height="78" rx="10" fill="var(--warn-bg)" stroke="var(--gold-deep)" stroke-width="2.8"/>
+    <text x="196" y="296" text-anchor="middle" class="sv-s" style="font-weight:700; fill:var(--ink)">TREISMAN 1960</text>
+    <text x="196" y="316" text-anchor="middle" class="sv-m">a volume knob, then</text>
+    <text x="196" y="332" text-anchor="middle" class="sv-m">meaning is analysed</text>
+    <text x="196" y="346" text-anchor="middle" class="sv-m" style="fill:var(--gold-deep)">survives best</text>
+
+    <rect x="308" y="54" width="220" height="78" rx="10" fill="var(--p-lilac)" stroke="var(--s3)" stroke-width="2"/>
+    <text x="418" y="76"  text-anchor="middle" class="sv-s" style="font-weight:700; fill:var(--ink)">DEUTSCH &amp; DEUTSCH 1963</text>
+    <text x="418" y="94"  text-anchor="middle" class="sv-m">Norman 1968</text>
+    <text x="418" y="112" text-anchor="middle" class="sv-m">understand everything,</text>
+    <text x="418" y="128" text-anchor="middle" class="sv-m">then pick one</text>
+
+    <rect x="308" y="164" width="220" height="188" rx="10" fill="var(--paper-2)" stroke="var(--line)" stroke-width="1.4" stroke-dasharray="6 4"/>
+    <text x="418" y="220" text-anchor="middle" class="sv-s" style="font-weight:700; fill:var(--ink)">Nobody is here</text>
+    <text x="418" y="244" text-anchor="middle" class="sv-s">A late filter has no need to</text>
+    <text x="418" y="262" text-anchor="middle" class="sv-s">leak or to weaken — meaning</text>
+    <text x="418" y="280" text-anchor="middle" class="sv-s">has already been extracted,</text>
+    <text x="418" y="298" text-anchor="middle" class="sv-s">so both tricks become</text>
+    <text x="418" y="316" text-anchor="middle" class="sv-s">unnecessary.</text>
+
+    <rect x="12" y="366" width="516" height="46" rx="9" fill="var(--gold-soft)" stroke="var(--gold)" stroke-width="1.8"/>
+    <text x="270" y="385" text-anchor="middle" class="sv-s" style="fill:var(--ink)">All four share <tspan style="font-weight:700">one bottleneck</tspan> passing <tspan style="font-weight:700">one stream.</tspan> Nobody disputes that.</text>
+    <text x="270" y="403" text-anchor="middle" class="sv-s" style="fill:var(--ink)">They differ on two things only: <tspan style="font-weight:700">where it sits</tspan>, and <tspan style="font-weight:700">what it does to what fails.</tspan></text>
+  </svg>
+  </div>
+
+  <div class="l-side">
+    <ol>
+      <li><b>Question 1 — where?</b> Broadbent, Moray and Treisman all put the gate <b>early</b>, before meaning. Deutsch &amp; Deutsch and Norman put it <b>late</b>, after.</li>
+      <li><b>Question 2 — what does it do?</b> Broadbent and Deutsch &amp; Deutsch <b>block</b>. Moray blocks but <b>leaks</b>. Treisman <b>weakens</b>.</li>
+      <li>Read the empty cell: a late filter has no <em>need</em> to leak or attenuate, because meaning is already extracted. That is why nobody proposed one.</li>
+      <li>Each theory exists because of a result that killed the previous one. Learn it as a <b>chain</b>: sounds-only → but my name → but translations → so let us move the door.</li>
+      <li>The hardest pair to separate is <b>Treisman vs Deutsch &amp; Deutsch</b>, because both let unattended meaning matter. The difference is <b>how much</b> analysis the ignored channel gets: degraded and partial, versus full and complete.</li>
+    </ol>
+    <div class="exam-tip">
+      <span>🎯</span>
+      <div><b>If you only memorise one thing for the exam:</b> "one bottleneck, and they argue about where it sits and what it does to what fails." Every comparison question is answerable from that sentence.</div>
+    </div>
+    <div class="hook">
+      <span class="h-ico">🚪</span>
+      <div><p class="h-t">Remember this</p><p class="h-b">One nightclub, one door. Where does it stand, and how hard is it to get past?</p></div>
+    </div>
+  </div>
+</article>
+
+<!-- ===== L18 ===== -->
+<article class="lesson" id="l18" style="--accent:var(--s4); --accent-soft:var(--p-sage); --accent-ink:var(--s4)">
+  <div class="l-head">
+    <div class="kicker"><span class="badge">LESSON 18</span><span class="sv-m" style="color:var(--muted)">how the argument was actually settled</span></div>
+    <h3>Both sides were right, at different times</h3>
+    <p class="q">The early-versus-late debate was not won. It was dissolved — by noticing that the gate <em>moves</em>.</p>
+  </div>
+
+  <div class="l-fig">
+  <svg viewBox="0 0 540 380" role="img" aria-label="Neisser's two processes and Lavie's load theory, in which the locus of selection moves with task demand">
+    <text x="12" y="20" class="sv-lab">STEP ONE · NEISSER (1967) — STOP LOOKING FOR ONE FILTER</text>
+
+    <rect x="12" y="32" width="250" height="86" rx="10" fill="var(--p-blue)" stroke="var(--s1)" stroke-width="1.8"/>
+    <text x="137" y="54" text-anchor="middle" class="sv-s" style="font-weight:700; fill:var(--ink)">PREATTENTIVE</text>
+    <text x="137" y="74" text-anchor="middle" class="sv-s">automatic · rapid · parallel</text>
+    <text x="137" y="92" text-anchor="middle" class="sv-s">notices physical features only</text>
+    <text x="137" y="110" text-anchor="middle" class="sv-m">no meaning, no relationships</text>
+
+    <rect x="278" y="32" width="250" height="86" rx="10" fill="var(--p-lilac)" stroke="var(--s3)" stroke-width="1.8"/>
+    <text x="403" y="54" text-anchor="middle" class="sv-s" style="font-weight:700; fill:var(--ink)">ATTENTIVE / CONTROLLED</text>
+    <text x="403" y="74" text-anchor="middle" class="sv-s">later · serial · costly</text>
+    <text x="403" y="92" text-anchor="middle" class="sv-s">uses working memory</text>
+    <text x="403" y="110" text-anchor="middle" class="sv-m">builds objects from fragments</text>
+
+    <line x1="12" y1="138" x2="528" y2="138" stroke="var(--line)"/>
+    <text x="12" y="162" class="sv-lab">STEP TWO · LAVIE (1995) — THE GATE MOVES WITH HOW HARD YOUR TASK IS</text>
+
+    <!-- see-saw -->
+    <path d="M60 288 L 270 240 L 480 288" fill="none" stroke="var(--gold-deep)" stroke-width="3" stroke-linejoin="round"/>
+    <polygon points="270,240 258,262 282,262" fill="var(--gold-deep)"/>
+
+    <rect x="20" y="188" width="200" height="92" rx="10" fill="var(--ok-bg)" stroke="var(--ok)" stroke-width="1.8"/>
+    <text x="120" y="210" text-anchor="middle" class="sv-s" style="font-weight:700; fill:var(--ink)">LOW task load</text>
+    <text x="120" y="230" text-anchor="middle" class="sv-s">Spare capacity spills over.</text>
+    <text x="120" y="248" text-anchor="middle" class="sv-s">Distractors DO get processed.</text>
+    <text x="120" y="270" text-anchor="middle" class="sv-m" style="fill:var(--ok); font-weight:700">→ looks like a LATE filter</text>
+
+    <rect x="320" y="188" width="200" height="92" rx="10" fill="var(--bad-bg)" stroke="var(--bad)" stroke-width="1.8"/>
+    <text x="420" y="210" text-anchor="middle" class="sv-s" style="font-weight:700; fill:var(--ink)">HIGH task load</text>
+    <text x="420" y="230" text-anchor="middle" class="sv-s">Capacity is used up by the task.</text>
+    <text x="420" y="248" text-anchor="middle" class="sv-s">Distractors are NOT perceived.</text>
+    <text x="420" y="270" text-anchor="middle" class="sv-m" style="fill:var(--bad); font-weight:700">→ looks like an EARLY filter</text>
+
+    <rect x="12" y="304" width="516" height="66" rx="10" fill="var(--gold-soft)" stroke="var(--gold)" stroke-width="2.2"/>
+    <text x="270" y="326" text-anchor="middle" class="sv-t" style="font-weight:700">So both camps had real data</text>
+    <text x="270" y="346" text-anchor="middle" class="sv-s" style="fill:var(--ink)">They were running experiments at different points on the same load scale.</text>
+    <text x="270" y="363" text-anchor="middle" class="sv-s" style="fill:var(--ink)">And note it connects straight back to lesson 5, dial 2 — attentional load.</text>
+  </svg>
+  </div>
+
+  <div class="l-side">
+    <ol>
+      <li><b>Neisser (1967)</b> stopped looking for one filter and proposed <b>two processes</b>: fast parallel <span class="term">preattentive</span> ones that see only physical features, and slow serial <span class="term">attentive</span> ones that build meaning.</li>
+      <li>That split is the ancestor of the automatic-versus-controlled distinction you meet all through cognitive psychology.</li>
+      <li><b>Lavie (1995)</b> then finished the job: the gate is not in a fixed place. Its position <b>moves with how hard your task is</b>.</li>
+      <li><b>High</b> load uses up capacity, so distractors are never perceived — you get Broadbent's result. <b>Low</b> load leaves spare capacity, distractors get in, and selection must happen late — you get Deutsch &amp; Deutsch's result.</li>
+      <li>Which means both sides were right, about different conditions. And it loops straight back to <b>dial 2 in lesson 5</b> — the same idea, arriving from the other direction.</li>
+    </ol>
+    <div class="exam-tip">
+      <span>📖</span>
+      <div><b>From outside your two readings.</b> Sternberg stops at Neisser (1967). Lavie is the modern resolution — present it as the dominant framework, not a settled fact, since the mechanism is still debated.</div>
+    </div>
+    <div class="hook">
+      <span class="h-ico">⚖️</span>
+      <div><p class="h-t">Remember this</p><p class="h-b">Nobody won. The gate slides — and how hard you are working decides where it stops.</p></div>
+    </div>
+  </div>
+</article>
+
+<!-- ===== THE MAP ===== -->
+<section id="map" style="scroll-margin-top:90px; margin-bottom:30px">
+  <h2 class="srcbar">The whole topic on one page</h2>
+  <p style="font-size:15px; color:var(--ink-2); max-width:74ch; margin:0 0 16px">If you can redraw this from memory, you know the topic. Try it on paper before you look.</p>
+  <figure class="mapbox" style="margin:0">
+  <svg viewBox="0 0 900 470" role="img" aria-label="A map of the whole topic, from the limited gate through the consequences to the four theories">
+    <defs>
+      <marker id="mA" markerWidth="9" markerHeight="9" refX="7.5" refY="4.5" orient="auto">
+        <path d="M0,0 L9,4.5 L0,9 z" fill="var(--gold-deep)"/></marker>
+      <marker id="mB" markerWidth="8" markerHeight="8" refX="6.5" refY="4" orient="auto">
+        <path d="M0,0 L8,4 L0,8 z" fill="var(--muted)"/></marker>
+    </defs>
+
+    <!-- centre -->
+    <rect x="330" y="20" width="240" height="62" rx="13" fill="var(--gold-soft)" stroke="var(--gold)" stroke-width="3"/>
+    <text x="450" y="46" text-anchor="middle" class="sv-h" style="font-size:20px">ATTENTION IS A SMALL GATE</text>
+    <text x="450" y="68" text-anchor="middle" class="sv-s">limited capacity · lesson 1</text>
+
+    <path d="M400 84 C 360 106, 250 110, 208 128" fill="none" stroke="var(--gold-deep)" stroke-width="2.4" marker-end="url(#mA)"/>
+    <path d="M500 84 C 540 106, 650 110, 692 128" fill="none" stroke="var(--gold-deep)" stroke-width="2.4" marker-end="url(#mA)"/>
+    <text x="280" y="100" text-anchor="middle" class="sv-s" style="fill:var(--gold-deep); font-weight:700">so what gets left out?</text>
+    <text x="620" y="100" text-anchor="middle" class="sv-s" style="fill:var(--gold-deep); font-weight:700">so how does it choose?</text>
+
+    <!-- LEFT branch -->
+    <rect x="20" y="134" width="376" height="30" rx="8" fill="var(--p-blush)" stroke="var(--s2)" stroke-width="1.8"/>
+    <text x="208" y="154" text-anchor="middle" class="sv-s" style="font-weight:700; fill:var(--ink)">PART ONE · THE CONSEQUENCES  (objectives A1–A4)</text>
+
+    <rect x="20" y="176" width="180" height="76" rx="9" fill="var(--card)" stroke="var(--line)" stroke-width="1.4"/>
+    <text x="110" y="196" text-anchor="middle" class="sv-m" style="fill:var(--ink); font-weight:700">Inattentional blindness</text>
+    <text x="110" y="214" text-anchor="middle" class="sv-m">the gorilla · 46% missed</text>
+    <text x="110" y="230" text-anchor="middle" class="sv-m">visible AND unexpected</text>
+    <text x="110" y="246" text-anchor="middle" class="sv-m" style="fill:var(--s2)">lessons 3, 4</text>
+
+    <rect x="216" y="176" width="180" height="76" rx="9" fill="var(--card)" stroke="var(--line)" stroke-width="1.4"/>
+    <text x="306" y="196" text-anchor="middle" class="sv-m" style="fill:var(--ink); font-weight:700">Three dials</text>
+    <text x="306" y="214" text-anchor="middle" class="sv-m">similarity · load · where</text>
+    <text x="306" y="230" text-anchor="middle" class="sv-m">attention points</text>
+    <text x="306" y="246" text-anchor="middle" class="sv-m" style="fill:var(--s2)">lessons 5, 6</text>
+
+    <rect x="20" y="264" width="180" height="76" rx="9" fill="var(--card)" stroke="var(--line)" stroke-width="1.4"/>
+    <text x="110" y="284" text-anchor="middle" class="sv-m" style="fill:var(--ink); font-weight:700">Related failures</text>
+    <text x="110" y="302" text-anchor="middle" class="sv-m">change blindness (2 views)</text>
+    <text x="110" y="318" text-anchor="middle" class="sv-m">attentional blink (time)</text>
+    <text x="110" y="334" text-anchor="middle" class="sv-m" style="fill:var(--s2)">lesson 7</text>
+
+    <rect x="216" y="264" width="180" height="76" rx="9" fill="var(--card)" stroke="var(--line)" stroke-width="1.4"/>
+    <text x="306" y="284" text-anchor="middle" class="sv-m" style="fill:var(--ink); font-weight:700">Divided attention</text>
+    <text x="306" y="302" text-anchor="middle" class="sv-m">= switching, not sharing</text>
+    <text x="306" y="318" text-anchor="middle" class="sv-m">the clown · 25% vs 71%</text>
+    <text x="306" y="334" text-anchor="middle" class="sv-m" style="fill:var(--s2)">lessons 8, 9</text>
+
+    <!-- RIGHT branch -->
+    <rect x="504" y="134" width="376" height="30" rx="8" fill="var(--p-blue)" stroke="var(--s1)" stroke-width="1.8"/>
+    <text x="692" y="154" text-anchor="middle" class="sv-s" style="font-weight:700; fill:var(--ink)">PART TWO · THE MECHANISM  (objectives B1–B5)</text>
+
+    <rect x="504" y="176" width="376" height="60" rx="9" fill="var(--card)" stroke="var(--line)" stroke-width="1.4"/>
+    <text x="692" y="196" text-anchor="middle" class="sv-m" style="fill:var(--ink); font-weight:700">The method: dichotic listening + shadowing</text>
+    <text x="692" y="214" text-anchor="middle" class="sv-m">The pattern: PHYSICAL survives, MEANING does not</text>
+    <text x="692" y="230" text-anchor="middle" class="sv-m" style="fill:var(--s1)">…except your own name · lessons 10, 11, 12</text>
+
+    <rect x="504" y="248" width="376" height="30" rx="8" fill="var(--gold-soft)" stroke="var(--gold)" stroke-width="1.6"/>
+    <text x="692" y="268" text-anchor="middle" class="sv-s" style="fill:var(--ink)">Four theories, one bottleneck. Chain of problems and fixes:</text>
+
+    <rect x="504" y="288" width="88" height="52" rx="8" fill="var(--p-blue)" stroke="var(--s1)" stroke-width="1.6"/>
+    <text x="548" y="308" text-anchor="middle" class="sv-m" style="fill:var(--ink); font-weight:700">BROADBENT</text>
+    <text x="548" y="324" text-anchor="middle" class="sv-m">early, shut</text>
+    <rect x="600" y="288" width="88" height="52" rx="8" fill="var(--p-sage)" stroke="var(--s4)" stroke-width="1.6"/>
+    <text x="644" y="308" text-anchor="middle" class="sv-m" style="fill:var(--ink); font-weight:700">MORAY</text>
+    <text x="644" y="324" text-anchor="middle" class="sv-m">early, leaky</text>
+    <rect x="696" y="288" width="88" height="52" rx="8" fill="var(--warn-bg)" stroke="var(--gold-deep)" stroke-width="2.4"/>
+    <text x="740" y="308" text-anchor="middle" class="sv-m" style="fill:var(--ink); font-weight:700">TREISMAN</text>
+    <text x="740" y="324" text-anchor="middle" class="sv-m">early, weak</text>
+    <rect x="792" y="288" width="88" height="52" rx="8" fill="var(--p-lilac)" stroke="var(--s3)" stroke-width="1.6"/>
+    <text x="836" y="308" text-anchor="middle" class="sv-m" style="fill:var(--ink); font-weight:700">D &amp; D</text>
+    <text x="836" y="324" text-anchor="middle" class="sv-m">late, shut</text>
+    <g stroke="var(--muted)" stroke-width="1.6" fill="none">
+      <path d="M592 314 L 597 314" marker-end="url(#mB)"/>
+      <path d="M688 314 L 693 314" marker-end="url(#mB)"/>
+      <path d="M784 314 L 789 314" marker-end="url(#mB)"/>
+    </g>
+
+    <!-- the join -->
+    <rect x="216" y="366" width="664" height="40" rx="10" fill="var(--p-sage)" stroke="var(--s4)" stroke-width="2"/>
+    <text x="548" y="384" text-anchor="middle" class="sv-s" style="font-weight:700; fill:var(--ink)">AND THE TWO HALVES JOIN HERE · Lavie’s load theory (lesson 18)</text>
+    <text x="548" y="400" text-anchor="middle" class="sv-s" style="fill:var(--ink)">How hard your task is (dial 2, left) decides where the gate sits (right). Same idea, two directions.</text>
+    <path d="M306 344 L 306 362" stroke="var(--s4)" stroke-width="2" stroke-dasharray="4 3"/>
+    <path d="M740 344 L 740 362" stroke="var(--s4)" stroke-width="2" stroke-dasharray="4 3"/>
+
+    <text x="450" y="434" text-anchor="middle" class="sv-s" style="font-style:italic">Left half: what the gate costs you. Right half: how the gate works.</text>
+    <text x="450" y="454" text-anchor="middle" class="sv-s" style="font-weight:700; fill:var(--ink)">Consequence → mechanism. That is the whole of Problem 1.</text>
+  </svg>
+  <figcaption>The whole of Theme 1, Problem 1, on one page.</figcaption>
+  </figure>
+</section>
+
+<!-- ===== MCQ ===== -->
+<section id="check" style="scroll-margin-top:90px; margin-bottom:30px">
+  <h2 class="srcbar">Check you have it — twelve beginner questions</h2>
+  <p style="font-size:15px; color:var(--ink-2); max-width:74ch; margin:0 0 18px">These test the <em>ideas</em>, not the names and dates. If you can do these, the harder exam-style set in your other file will make sense.</p>
+  <div class="q-meta">
+    <span class="score"><b id="sc">0</b> / 12</span>
+    <span class="bar"><i id="barI"></i></span>
+    <button class="reset" id="resetBtn" type="button">Reset</button>
+  </div>
+  <div id="qbox"></div>
+</section>
+
+<!-- ===== GLOSSARY ===== -->
+<section id="gloss" style="scroll-margin-top:90px; margin-bottom:30px">
+  <h2 class="srcbar">Every term, in one line each</h2>
+  <dl class="gloss">
+    <div class="gitem"><dt>Attention</dt><dd>The process that selects some of what your senses collect for further processing, and drops the rest.</dd></div>
+    <div class="gitem"><dt>Limited capacity</dt><dd>Only a small amount can be processed at any one moment. The reason everything else in this topic happens.</dd></div>
+    <div class="gitem"><dt>Selective attention</dt><dd>Attending to one thing on purpose while blocking the rest. The cocktail-party skill.</dd></div>
+    <div class="gitem"><dt>Sustained attention (vigilance)</dt><dd>The same skill held over a long stretch of time.</dd></div>
+    <div class="gitem"><dt>Divided attention</dt><dd>Genuinely doing two things at once. Mostly does not happen; it is switching instead.</dd></div>
+    <div class="gitem"><dt>Task switching</dt><dd>Hopping between tasks. Not a synonym for divided attention, and it costs time and accuracy each hop.</dd></div>
+    <div class="gitem"><dt>Inattentional blindness</dt><dd>Failing to notice something <b>fully visible</b> but <b>unexpected</b>, because attention was elsewhere.</dd></div>
+    <div class="gitem"><dt>Inattentional deafness</dt><dd>The same thing in hearing — missing an unexpected voice while attention is on another sound.</dd></div>
+    <div class="gitem"><dt>Change blindness</dt><dd>Missing a large change to a scene when it happens during a blink or blank. Needs <b>two</b> views, so it involves memory.</dd></div>
+    <div class="gitem"><dt>Attentional blink</dt><dd>Catching one target makes you briefly blind to a second arriving 200–500 ms later. A failure in time.</dd></div>
+    <div class="gitem"><dt>Attentional load</dt><dd>How much of your capacity the task you were actually given is consuming.</dd></div>
+    <div class="gitem"><dt>Cocktail party problem</dt><dd>Following one conversation while others compete for your ears (Cherry, 1953).</dd></div>
+    <div class="gitem"><dt>Dichotic presentation</dt><dd>Playing a different message to each ear. A method, not a finding.</dd></div>
+    <div class="gitem"><dt>Shadowing</dt><dd>Repeating the attended message out loud, word for word, as it arrives.</dd></div>
+    <div class="gitem"><dt>Filter</dt><dd>Something that <b>blocks</b> part of the information so only some passes to the next stage.</dd></div>
+    <div class="gitem"><dt>Bottleneck</dt><dd>Something that <b>slows</b> information passing through. All four theories propose one.</dd></div>
+    <div class="gitem"><dt>Attenuation</dt><dd>Weakening rather than blocking. Treisman's key move: the ignored channel is turned down, not off.</dd></div>
+    <div class="gitem"><dt>Early vs late selection</dt><dd>Whether the gate acts <b>before</b> meaning is extracted or <b>after</b>. The single biggest dividing line.</dd></div>
+    <div class="gitem"><dt>Preattentive processes</dt><dd>Automatic, rapid, parallel. Notice physical features only — no meaning (Neisser, 1967).</dd></div>
+    <div class="gitem"><dt>Perceptual load theory</dt><dd>The gate's position moves with task difficulty. High load → early selection; low load → late (Lavie, 1995).</dd></div>
+  </dl>
+</section>
+
+  </div>
+</div>
+</main>
+
+<script>
+const LESSONS = [
+  ['l1','01','🔭','Attention is a gate, and it is tiny','Your senses collect more than your mind can use. Something has to choose.','lesson 1'],
+  ['l2','02','🧭','Four jobs we give the same gate','Selective, sustained, divided, switching — and why mixing them up costs marks.','lesson 2'],
+  ['l3','03','🦍','The invisible gorilla','Half the viewers missed a chest-thumping gorilla in the middle of the screen.','lesson 3'],
+  ['l4','04','🪞','Everyone thinks it would not happen to them','90% believe they would spot it. They would not.','lesson 4'],
+  ['l5','05','🎚️','Three dials decide whether you notice','Similarity, load, and where attention points. Not how obvious it is.','lesson 5'],
+  ['l6','06','👁️','Looking is not seeing','Your eyes can stare at something your attention never reaches.','lesson 6'],
+  ['l7','07','🔢','Blindness, change blindness, the blink','Three different failures. Count the pictures to tell them apart.','lesson 7'],
+  ['l8','08','🔀','Multitasking is switching in disguise','One spotlight, moving fast — and every move costs you.','lesson 8'],
+  ['l9','09','🤡','The unicycling clown','25% on a phone saw it. 71% walking in a pair did.','lesson 9'],
+  ['l10','10','🎧','The cocktail party, in a laboratory','Dichotic listening and shadowing — the task behind every theory.','lesson 10'],
+  ['l11','11','🔇','Sound survives, meaning does not','The one asymmetry that all four theories exist to explain.','lesson 11'],
+  ['l12','12','📣','Except your own name','One word breaks through — and for the people with the leakiest filters.','lesson 12'],
+  ['l13','13','🚪','Broadbent: a shutter, early','One channel in, chosen by how it sounds. Everything else stops.','lesson 13'],
+  ['l14','14','🩹','Moray: the same shutter, but leaky','The minimum repair — and the three studies that broke it.','lesson 14'],
+  ['l15','15','🔊','Treisman: a volume knob','Degree of processing replaces whether processing happens.','lesson 15'],
+  ['l16','16','🏢','Deutsch & Deutsch: the door at the end','Understand everything first, then choose what reaches you.','lesson 16'],
+  ['l17','17','⚖️','All four, side by side','Two questions separate every theory in the topic.','lesson 17'],
+  ['l18','18','🌅','Both sides were right, at different times','The debate was dissolved, not won. The gate slides.','lesson 18']
+];
+
+// overview cards
+const ov = document.getElementById('ovgrid');
+const ACC = ['var(--s1)','var(--s4)','var(--s2)','var(--s3)','var(--s1)','var(--s3)','var(--s4)','var(--s2)','var(--s2)',
+             'var(--s4)','var(--s1)','var(--s2)','var(--s1)','var(--s4)','var(--gold-deep)','var(--s3)','var(--gold-deep)','var(--s4)'];
+LESSONS.forEach(([id,n,ico,title,desc,src],i) => {
+  const b = document.createElement('button');
+  b.className = 'lcard';
+  b.type = 'button';
+  b.style.setProperty('--accent', ACC[i]);
+  b.innerHTML = `<span class="num">${n}</span><span class="ico">${ico}</span><h4>${title}</h4><p>${desc}</p><span class="src">${src}</span>`;
+  b.addEventListener('click', () => {
+    document.getElementById(id).scrollIntoView({behavior:'smooth', block:'start'});
+  });
+  ov.appendChild(b);
+});
+
+// rail
+const RAIL = [
+  ['g','Before you start'],
+  ['note','·','Professor’s note'],
+  ['overview','·','All 18 lessons'],
+  ['g','Part one — the cost'],
+  ['l1','01','A tiny gate'],
+  ['l2','02','Four jobs'],
+  ['l3','03','The gorilla'],
+  ['l4','04','Why we are wrong'],
+  ['l5','05','Three dials'],
+  ['l6','06','Looking ≠ seeing'],
+  ['l7','07','Three failures'],
+  ['l8','08','Multitasking'],
+  ['l9','09','The clown'],
+  ['g','Part two — the machine'],
+  ['l10','10','The method'],
+  ['l11','11','Sound vs meaning'],
+  ['l12','12','Your own name'],
+  ['l13','13','Broadbent'],
+  ['l14','14','Moray'],
+  ['l15','15','Treisman'],
+  ['l16','16','Deutsch &amp; Deutsch'],
+  ['l17','17','All four'],
+  ['l18','18','Where it stands'],
+  ['g','Finally'],
+  ['map','★','The whole map'],
+  ['check','★','Check you have it'],
+  ['gloss','★','Glossary']
+];
+const rail = document.getElementById('rail');
+rail.innerHTML = '<p class="rail-t">Eighteen lessons</p>';
+RAIL.forEach(row => {
+  if (row[0] === 'g') {
+    const p = document.createElement('p');
+    p.className = 'rail-g';
+    p.innerHTML = row[1];
+    rail.appendChild(p);
+    return;
+  }
+  const a = document.createElement('a');
+  a.href = '#' + row[0];
+  a.innerHTML = `<span class="rn">${row[1]}</span><span>${row[2]}</span>`;
+  rail.appendChild(a);
+});
+
+const QS = [
+  {t:'Lesson 1',
+   q:'Someone coughs during a lecture and you do not register it at all. What happened to that sound?',
+   o:['Your ear did not pick it up','It was picked up, but never processed into an experience','You noticed it and then immediately forgot it','It was too quiet to reach your ear'],
+   a:1,
+   e:'The ear collected it perfectly. Attention simply never selected it, so it was never turned into an experience. Nothing was forgotten, because nothing was ever formed.'},
+  {t:'Lesson 2',
+   q:'You keep flicking between an essay and your messages. Which of the four kinds of attention is that?',
+   o:['Divided attention','Sustained attention','Task switching','Selective attention'],
+   a:2,
+   e:'You are hopping, not genuinely doing both at once — so it is task switching. Divided attention would mean truly doing both simultaneously, which is what lesson 8 says almost never happens.'},
+  {t:'Lesson 3',
+   q:'Which two things must BOTH be true for something to count as inattentional blindness?',
+   o:['It is faint, and you are distracted','It is fully visible, and it is unexpected','It changes, and you blinked','It is unexpected, and you were looking away'],
+   a:1,
+   e:'Both conditions are in the definition. If it were faint, that would be a sensory result. If you were looking away, that would be trivial. The whole point is that it is right there, and you were not expecting it.'},
+  {t:'Lesson 4',
+   q:'Why are people so confident they would have spotted the gorilla?',
+   o:['Because most people actually do spot it','Because you only ever experience the things you did notice','Because the gorilla is very large','Because they have seen the video before'],
+   a:1,
+   e:'You have vivid access to everything you noticed and no access at all to what you missed. So from the inside, your experience looks complete — and you conclude you do not miss things.'},
+  {t:'Lesson 5',
+   q:'You want more people to spot the gorilla. Which change would work?',
+   o:['Make the task harder','Ask them to count the black team instead of the white team','Make the gorilla move faster','Add more players to the screen'],
+   a:1,
+   e:'Similarity to what you are attending to is dial 1. The gorilla is dark, so counting the dark team makes it match your specification. The other three options all increase load, which reduces noticing.'},
+  {t:'Lesson 6',
+   q:'Eye-movement recordings of people who MISSED the gorilla showed that they:',
+   o:['Never looked at it','Looked at it as long as the people who saw it','Only saw it in peripheral vision','Looked away every time it appeared'],
+   a:1,
+   e:'They fixated it for just as long. Gaze and attention are two different arrows — which is exactly why Simons warns cyclists not to trust apparent eye contact.'},
+  {t:'Lesson 7',
+   q:'A scene changes while a lorry drives past, and you do not notice. Which failure is this?',
+   o:['Inattentional blindness','Change blindness','The attentional blink','Inattentional deafness'],
+   a:1,
+   e:'Two views with a disruption between them means change blindness — and because you must compare before with after, it also involves memory. Count the pictures: two means change blindness.'},
+  {t:'Lesson 8',
+   q:'What is actually happening when it feels like you are doing two things at once?',
+   o:['Your attention has genuinely split in two','One beam is hopping between them, at a cost each hop','The tasks have merged into one','Your capacity has temporarily expanded'],
+   a:1,
+   e:'"There really is no such thing as multi-tasking. Instead, people are just rapidly switching." While the beam is on task B, task A is genuinely unattended.'},
+  {t:'Lesson 9',
+   q:'In the clown study, who noticed it MOST?',
+   o:['People on a mobile phone','People walking alone','People listening to music','People walking in a pair'],
+   a:3,
+   e:'71% of people in pairs saw it, against just 25% on a phone. So talking is not the problem — talking to someone who is not there is. That is the answer to "why are phones worse than passengers?"'},
+  {t:'Lesson 11',
+   q:'In the ignored ear, which change would a person typically NOTICE?',
+   o:['English switching to German','The speaker changing from male to female','The words becoming nonsense','The message being played backwards'],
+   a:1,
+   e:'A male-to-female switch is a physical change, and physical properties survive in the ignored channel. All the other options are changes to meaning, and meaning does not get through.'},
+  {t:'Lesson 12',
+   q:'Who is most likely to hear their own name in the ignored ear?',
+   o:['People with high memory span, because they have spare capacity','People with low memory span, because their filter leaks','People who have been trained to shadow','Nobody — the effect does not exist'],
+   a:1,
+   e:'65% of low-span people heard it against 20% of high-span people. High-span people are better at BLOCKING the irrelevant message. So hearing your name is a leaky filter, not a sharp one — though the memory-span part of this has not replicated reliably.'},
+  {t:'Lessons 13–17',
+   q:'What is the single biggest difference between Treisman and Broadbent?',
+   o:['Where the gate sits in the pipeline','Whether the gate blocks completely or merely weakens','Whether there is a bottleneck at all','Whether physical properties matter'],
+   a:1,
+   e:'Both put the gate EARLY, so position is not the difference. Broadbent blocks completely; Treisman weakens without blocking. That shift — degree of processing instead of whether processing happens — is the most important idea in Part two.'}
+];
+
+const qbox = document.getElementById('qbox');
+let score = 0, answered = 0;
+function render(){
+  qbox.innerHTML = '';
+  score = 0; answered = 0; paint();
+  QS.forEach((item, i) => {
+    const d = document.createElement('div');
+    d.className = 'q';
+    const opts = item.o.map((txt, j) =>
+      `<button class="opt" type="button" data-q="${i}" data-o="${j}"><span class="ol">${'ABCD'[j]}</span><span>${txt}</span></button>`
+    ).join('');
+    d.innerHTML =
+      `<p class="qtag">${item.t}</p>` +
+      `<div class="qh"><span class="qn">Q${i+1}</span><span class="qt">${item.q}</span></div>` +
+      `<div class="opts">${opts}</div>` +
+      `<div class="fb" id="fb${i}"></div>`;
+    qbox.appendChild(d);
+  });
+}
+qbox.addEventListener('click', (ev) => {
+  const btn = ev.target.closest('.opt');
+  if (!btn || btn.disabled) return;
+  const qi = +btn.dataset.q, oi = +btn.dataset.o, item = QS[qi];
+  const group = btn.closest('.q');
+  group.querySelectorAll('.opt').forEach(b => { b.disabled = true; });
+  group.querySelector(`.opt[data-o="${item.a}"]`).classList.add('correct');
+  const fb = document.getElementById('fb' + qi);
+  if (oi === item.a) {
+    score++;
+    fb.className = 'fb good show';
+    fb.innerHTML = '<b>Correct.</b> ' + item.e;
+  } else {
+    btn.classList.add('wrong');
+    fb.className = 'fb bad show';
+    fb.innerHTML = '<b>Not quite — it is ' + 'ABCD'[item.a] + '.</b> ' + item.e;
+  }
+  answered++;
+  paint();
+});
+function paint(){
+  document.getElementById('sc').textContent = score;
+  document.getElementById('barI').style.width = (answered / QS.length * 100) + '%';
+}
+document.getElementById('resetBtn').addEventListener('click', render);
+render();
+
+document.getElementById('themeBtn').addEventListener('click', () => {
+  const root = document.documentElement;
+  const now = root.getAttribute('data-theme');
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  root.setAttribute('data-theme', now ? (now === 'dark' ? 'light' : 'dark') : (prefersDark ? 'light' : 'dark'));
+});
+</script>
+</body>
+</html>
